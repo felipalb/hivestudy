@@ -1,0 +1,397 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 63;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1C48D7D5FDFE8F6BE497E0C0 /* NewGameSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D257F0D6F58F690BEFCEF6A /* NewGameSheet.swift */; };
+		1DC5BDCDDE06AF021E1EA56B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E4BE7DD7C226C91E49E09BE /* ContentView.swift */; };
+		37A8269831BE14CB726A56E9 /* HandTrayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AA8838C5DBA907AD849AC2F /* HandTrayView.swift */; };
+		38E65E4F43A462D6715827D8 /* HiveEngine in Frameworks */ = {isa = PBXBuildFile; productRef = AF64E4725E4020EE0049EF8D /* HiveEngine */; };
+		69B4E6E3C651A813416C346E /* HexLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F036E4D6C087EE7D0231CC /* HexLayout.swift */; };
+		6F3E92B074EF44053D4ED348 /* TileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F024F6DD81154913E2A2E3 /* TileView.swift */; };
+		7841210C97B8AA915CD385C1 /* GameController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EEEE9AD59923A78324B6D85 /* GameController.swift */; };
+		AF70EE4BDFF271F480D7AF1D /* HiveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83895E603148A99B5CAE7926 /* HiveApp.swift */; };
+		C4B1A0E3F11CD03E29664F17 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB30CCAF2BFF7612D80CF0F1 /* Assets.xcassets */; };
+		D806722956FB79D688A864E8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C3E57D8E0A3EED874700328 /* Theme.swift */; };
+		EEE8C7043B3173EFF4C89B88 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E34298BE696C129009A8B60 /* BoardView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0D257F0D6F58F690BEFCEF6A /* NewGameSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewGameSheet.swift; sourceTree = "<group>"; };
+		0E34298BE696C129009A8B60 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
+		112147BFF1AFA7E7B3F0FBCB /* HiveEngine */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HiveEngine; path = ../HiveEngine; sourceTree = SOURCE_ROOT; };
+		1EEEE9AD59923A78324B6D85 /* GameController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameController.swift; sourceTree = "<group>"; };
+		29F024F6DD81154913E2A2E3 /* TileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileView.swift; sourceTree = "<group>"; };
+		2C3E57D8E0A3EED874700328 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		79238322435368EE46736320 /* Hive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hive.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		83895E603148A99B5CAE7926 /* HiveApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiveApp.swift; sourceTree = "<group>"; };
+		8AA8838C5DBA907AD849AC2F /* HandTrayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTrayView.swift; sourceTree = "<group>"; };
+		8E4BE7DD7C226C91E49E09BE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B2F036E4D6C087EE7D0231CC /* HexLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexLayout.swift; sourceTree = "<group>"; };
+		BB30CCAF2BFF7612D80CF0F1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		60140C07C7A8613FD1E9A47F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				38E65E4F43A462D6715827D8 /* HiveEngine in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		7C43FEC4E0CE541FF95F32B9 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				0E34298BE696C129009A8B60 /* BoardView.swift */,
+				8E4BE7DD7C226C91E49E09BE /* ContentView.swift */,
+				1EEEE9AD59923A78324B6D85 /* GameController.swift */,
+				8AA8838C5DBA907AD849AC2F /* HandTrayView.swift */,
+				B2F036E4D6C087EE7D0231CC /* HexLayout.swift */,
+				83895E603148A99B5CAE7926 /* HiveApp.swift */,
+				0D257F0D6F58F690BEFCEF6A /* NewGameSheet.swift */,
+				2C3E57D8E0A3EED874700328 /* Theme.swift */,
+				29F024F6DD81154913E2A2E3 /* TileView.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		866114354D8FAED8FF6B933E /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BB30CCAF2BFF7612D80CF0F1 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		B37F12CC57F2B79F72B09E96 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				112147BFF1AFA7E7B3F0FBCB /* HiveEngine */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		C0774CFD0FF61D4D63F27291 = {
+			isa = PBXGroup;
+			children = (
+				B37F12CC57F2B79F72B09E96 /* Packages */,
+				866114354D8FAED8FF6B933E /* Resources */,
+				7C43FEC4E0CE541FF95F32B9 /* Sources */,
+				CE9910563EAF7656CC33ABEE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CE9910563EAF7656CC33ABEE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				79238322435368EE46736320 /* Hive.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		585C10F120518ACF6FC8557E /* Hive */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 93EA9C585ACB157BC0FF5063 /* Build configuration list for PBXNativeTarget "Hive" */;
+			buildPhases = (
+				08204F1EF59224827B01A244 /* Sources */,
+				24B5E7D31B66A1F0F8D19F8B /* Resources */,
+				60140C07C7A8613FD1E9A47F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Hive;
+			packageProductDependencies = (
+				AF64E4725E4020EE0049EF8D /* HiveEngine */,
+			);
+			productName = Hive;
+			productReference = 79238322435368EE46736320 /* Hive.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4332813679A79851E8B620CD /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+			};
+			buildConfigurationList = 4234DB56A63D4F01CF8E95B2 /* Build configuration list for PBXProject "Hive" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C0774CFD0FF61D4D63F27291;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AECAAE5522659D7E54E7E2FE /* XCLocalSwiftPackageReference "../HiveEngine" */,
+			);
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				585C10F120518ACF6FC8557E /* Hive */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		24B5E7D31B66A1F0F8D19F8B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C4B1A0E3F11CD03E29664F17 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		08204F1EF59224827B01A244 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EEE8C7043B3173EFF4C89B88 /* BoardView.swift in Sources */,
+				1DC5BDCDDE06AF021E1EA56B /* ContentView.swift in Sources */,
+				7841210C97B8AA915CD385C1 /* GameController.swift in Sources */,
+				37A8269831BE14CB726A56E9 /* HandTrayView.swift in Sources */,
+				69B4E6E3C651A813416C346E /* HexLayout.swift in Sources */,
+				AF70EE4BDFF271F480D7AF1D /* HiveApp.swift in Sources */,
+				1C48D7D5FDFE8F6BE497E0C0 /* NewGameSheet.swift in Sources */,
+				D806722956FB79D688A864E8 /* Theme.swift in Sources */,
+				6F3E92B074EF44053D4ED348 /* TileView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3F4EC9DAC293D0713E944B13 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A293FE4714F999E8B86C9A8D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A2DAC11D233DCA8BE9A118CC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UHX424SV7U;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hivestudy.Hive;
+				PRODUCT_NAME = Hive;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B85E791DAAC24B9B22A5A9AB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UHX424SV7U;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hivestudy.Hive;
+				PRODUCT_NAME = Hive;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4234DB56A63D4F01CF8E95B2 /* Build configuration list for PBXProject "Hive" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A293FE4714F999E8B86C9A8D /* Debug */,
+				3F4EC9DAC293D0713E944B13 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		93EA9C585ACB157BC0FF5063 /* Build configuration list for PBXNativeTarget "Hive" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B85E791DAAC24B9B22A5A9AB /* Debug */,
+				A2DAC11D233DCA8BE9A118CC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		AECAAE5522659D7E54E7E2FE /* XCLocalSwiftPackageReference "../HiveEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../HiveEngine;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AF64E4725E4020EE0049EF8D /* HiveEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HiveEngine;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 4332813679A79851E8B620CD /* Project object */;
+}
