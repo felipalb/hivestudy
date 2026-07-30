@@ -63,11 +63,15 @@ swift test
 
 - **Vs. Computer** with Easy / Medium / Hard AI, or **two-player** hot-seat.
 - Choose your colour and toggle the **tournament opening** rule (no Queen on move one).
+- Tiles are labelled with the piece's **actual name** (Queen, Spider, Beetle, Grasshopper, Ant),
+  each in its own accent colour.
 - Tap a tile in your hand to place it, or tap a tile on the board to move it — legal destinations
   light up as pulsing markers. Beetle-climb targets get a ring on the tile itself.
 - **Pan & pinch-zoom** the board; a camera auto-frames the hive until you take manual control, with
-  a recenter button.
+  a recenter button docked at the right edge.
 - Live **queen-surround counters** (e.g. `3/6`) in the status bar — the heart of Hive's tension.
+- **Auto-save & resume**: your match is cached after every move, so closing the app never loses it —
+  reopen and choose *Continue Game* or *Leave Game*.
 - Undo, an in-app **rules reference**, animated moves, and haptic feedback.
 
 ## Rules implemented
@@ -94,8 +98,13 @@ a future update; the base game is fully playable.
 
 `HiveAI` runs iterative-deepening **negamax with alpha-beta pruning** and a strictly zero-sum
 heuristic dominated by queen-surrounding (quadratic, so the last couple of sides are urgent), plus a
-mobility term. Search runs off the main actor with a time budget so the UI stays responsive. It
-reliably beats random play and finds forced mates-in-one (both covered by tests).
+mobility term. Search runs off the main actor with a time budget so the UI stays responsive.
+
+It plays to **win**, not merely to hinder: it always takes an immediate winning move, scores mates by
+distance so it drives to the *fastest* kill, and never throws away a blunder when either queen is
+under threat (even on Easy/Medium). It reliably beats random play and finds forced mates-in-one (both
+covered by tests). If a human player is ever left with no legal move, the app passes for them so the
+opponent can finish.
 
 ## Notes
 

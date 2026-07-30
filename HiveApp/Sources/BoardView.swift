@@ -7,11 +7,14 @@ import HiveEngine
 struct BoardView: View {
     let game: GameController
     var baseHexSize: CGFloat = 30
+    /// Launches the guided tutorial overlay (owned by the root ContentView).
+    var onStartTutorial: () -> Void = {}
 
     @State private var zoom: CGFloat = 1
     @State private var pan: CGSize = .zero
     @State private var viewSize: CGSize = .zero
     @State private var userAdjusted = false
+    @State private var showRules = false
     @GestureState private var pinch: CGFloat = 1
     @GestureState private var drag: CGSize = .zero
 
@@ -33,11 +36,30 @@ struct BoardView: View {
             .clipped()
             .gesture(panGesture)
             .simultaneousGesture(zoomGesture)
-            .overlay(alignment: .bottomTrailing) { cameraControls }
+            // Docked at the mid-right edge — clear of the top status bar and the
+            // hand trays along the bottom, which used to overlap these controls.
+            .overlay(alignment: .trailing) { cameraControls }
             .onAppear { viewSize = geo.size; fit(animated: false) }
             .onChange(of: geo.size) { _, new in viewSize = new; if !userAdjusted { fit(animated: false) } }
             .onChange(of: game.state.board.tileCount) { _, _ in if !userAdjusted { fit(animated: true) } }
             .onChange(of: game.history.count) { _, new in if new == 0 { userAdjusted = false; fit(animated: true) } }
+        }
+        // Presented from the floating "book" button. Hosted here (not on the root
+        // ContentView, which already owns the menu sheet) so the two never stack
+        // — a second `.sheet` on one view triggers "only a single sheet is
+        // supported". `RulesView` carries no NavigationStack of its own, so wrap
+        // it in one to get the title bar and a Done button.
+        .sheet(isPresented: $showRules) {
+            NavigationStack {
+                RulesView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showRules = false }.fontWeight(.semibold)
+                        }
+                    }
+            }
+            .presentationDetents([.medium, .large])
+            .preferredColorScheme(.dark)
         }
     }
 
@@ -81,9 +103,9 @@ struct BoardView: View {
 
     private var cameraControls: some View {
         VStack(spacing: 10) {
-            cameraButton("plus.magnifyingglass") { setZoom(zoom * 1.25) }
-            cameraButton("minus.magnifyingglass") { setZoom(zoom / 1.25) }
+            cameraButton("graduationcap.fill") { onStartTutorial() }
             cameraButton("scope") { userAdjusted = false; fit(animated: true) }
+            cameraButton("book.fill") { showRules = true }
         }
         .padding(12)
     }

@@ -48,7 +48,7 @@ public enum Bug: String, Codable, Sendable, CaseIterable {
         }
     }
 
-    /// Single-letter tag used on the tiles.
+    /// Single-letter tag (legacy; the UI now labels tiles with `tileName`).
     public var letter: String {
         switch self {
         case .queen: return "Q"
@@ -59,6 +59,21 @@ public enum Bug: String, Codable, Sendable, CaseIterable {
         case .mosquito: return "M"
         case .ladybug: return "L"
         case .pillbug: return "P"
+        }
+    }
+
+    /// Short, real creature name shown on a tile (the tiles are labelled by
+    /// name, not by initial). Concise enough to fit a hexagon at small sizes.
+    public var tileName: String {
+        switch self {
+        case .queen: return "Queen"
+        case .beetle: return "Beetle"
+        case .grasshopper: return "Grasshopper"
+        case .spider: return "Spider"
+        case .ant: return "Ant"
+        case .mosquito: return "Mosquito"
+        case .ladybug: return "Ladybug"
+        case .pillbug: return "Pillbug"
         }
     }
 }

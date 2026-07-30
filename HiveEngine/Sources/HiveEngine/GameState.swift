@@ -5,7 +5,8 @@ public struct GameConfig: Sendable, Equatable, Codable {
     /// Tournament opening: a player may not place their Queen as their first tile.
     public var tournamentOpening: Bool
     /// Expansion tiles to include (subset of `.mosquito`, `.ladybug`, `.pillbug`).
-    /// The base game leaves this empty. (Expansion movement is not yet enabled.)
+    /// The base game leaves this empty. `.mosquito` and `.ladybug` have full
+    /// movement rules; `.pillbug` places but can't yet move.
     public var expansions: Set<Bug>
 
     public init(tournamentOpening: Bool = false, expansions: Set<Bug> = []) {
@@ -163,13 +164,14 @@ public struct GameState: Sendable, Equatable, Codable {
 }
 
 extension GameState {
-    /// Construct an arbitrary position directly. Intended for tests and puzzle
-    /// setups; normal play should go through `apply(_:)`.
-    init(board: Board,
-         current: PlayerColor,
-         unplaced: [Piece],
-         movesMade: [PlayerColor: Int],
-         config: GameConfig = .base) {
+    /// Construct an arbitrary position directly. Intended for tests, puzzle
+    /// setups, and the app's guided tutorial drills; normal play should go
+    /// through `apply(_:)`.
+    public init(board: Board,
+                current: PlayerColor,
+                unplaced: [Piece],
+                movesMade: [PlayerColor: Int],
+                config: GameConfig = .base) {
         self.board = board
         self.current = current
         self.unplaced = unplaced

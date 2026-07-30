@@ -5,24 +5,43 @@ import Foundation
 /// The evaluation is strictly zero-sum (symmetric between the two colours), as
 /// negamax requires: any advantage for one side is an equal disadvantage for the
 /// other.
+///
+/// Design goals (see CLAUDE.md → "The AI"): the computer should actually try to
+/// *win*, not merely hinder. Three things enforce that:
+///   1. An immediate winning move is always taken, before any random blunder.
+///   2. Terminal scores decay with distance, so it heads straight for the fastest
+///      kill instead of shuffling among equal-value winning lines.
+///   3. Blunders are disabled in "critical" positions (either queen nearly
+///      surrounded), so lower difficulties still finish — and defend — when it
+///      matters, while staying beatable in the quiet midgame.
 public enum HiveAI {
 
     public enum Difficulty: String, CaseIterable, Sendable, Codable {
+        /// A deliberately very weak, very forgiving tier for the in-app tutorial
+        /// bot — not offered in the normal difficulty picker (see
+        /// `GameMenuSheet`). Still takes an immediate win and still defends a
+        /// queen in real danger (that safety net in `bestMove` applies to every
+        /// tier), so a match still resolves properly; it just blunders often
+        /// enough in the quiet midgame that a total beginner can win.
+        case megaEasy
         case easy, medium, hard
 
         var searchDepth: Int {
             switch self {
+            case .megaEasy: return 1
             case .easy: return 1
             case .medium: return 2
-            case .hard: return 3
+            case .hard: return 4
             }
         }
 
-        /// Chance of playing a non-optimal move, to stay beatable.
+        /// Chance of playing a non-optimal move in a *non-critical* position, to
+        /// stay beatable. Never applied when a queen is under threat.
         var blunderChance: Double {
             switch self {
-            case .easy: return 0.35
-            case .medium: return 0.05
+            case .megaEasy: return 0.6
+            case .easy: return 0.25
+            case .medium: return 0.0
             case .hard: return 0.0
             }
         }
@@ -42,13 +61,24 @@ public enum HiveAI {
         let moves = state.legalMoves()
         guard moves.count > 1 else { return moves.first }
 
-        // Occasional deliberate blunder on lower difficulties.
-        if difficulty.blunderChance > 0,
+        let me = state.current
+
+        // 1) Never stall on a kill: if any move ends the game in our favour, play
+        //    it immediately (this also short-circuits the blunder roll below).
+        for move in moves where state.applying(move).result == .win(me) {
+            return move
+        }
+
+        // 2) Occasional deliberate blunder on lower difficulties — but only when
+        //    neither queen is in danger, so the AI still fights to win/defend at
+        //    the moments that decide the game.
+        let critical = state.queenSurroundCount(me.opponent) >= 4
+                    || state.queenSurroundCount(me) >= 4
+        if difficulty.blunderChance > 0, !critical,
            Double.random(in: 0..<1, using: &rng) < difficulty.blunderChance {
             return moves.randomElement(using: &rng)
         }
 
-        let me = state.current
         let ordered = orderMoves(moves, state: state)
         let deadline = Date().addingTimeInterval(timeLimit)
 
@@ -68,7 +98,7 @@ public enum HiveAI {
                 let child = state.applying(move)
                 let score = -negamax(child, depth: depth - 1,
                                      alpha: -beta, beta: -alpha,
-                                     toMove: me.opponent, deadline: deadline)
+                                     toMove: me.opponent, ply: 1, deadline: deadline)
                 if score > localBestScore {
                     localBestScore = score
                     localBest = move
@@ -93,10 +123,19 @@ public enum HiveAI {
         alpha: Int,
         beta: Int,
         toMove: PlayerColor,
+        ply: Int,
         deadline: Date
     ) -> Int {
-        if state.result != .ongoing || depth == 0 {
-            return evaluate(state, for: toMove) + depthBonus(state, toMove: toMove, depth: depth)
+        // Mate-distance aware terminal scoring: a win reached sooner is worth
+        // more, so the AI drives to the quickest kill rather than dithering.
+        switch state.result {
+        case .win(let winner):
+            let magnitude = winScore - ply
+            return winner == toMove ? magnitude : -magnitude
+        case .draw:
+            return 0
+        case .ongoing:
+            if depth == 0 { return evaluate(state, for: toMove) }
         }
 
         var alpha = alpha
@@ -107,19 +146,13 @@ public enum HiveAI {
             let child = state.applying(move)
             let score = -negamax(child, depth: depth - 1,
                                  alpha: -beta, beta: -alpha,
-                                 toMove: toMove.opponent, deadline: deadline)
+                                 toMove: toMove.opponent, ply: ply + 1, deadline: deadline)
             best = max(best, score)
             alpha = max(alpha, score)
             if alpha >= beta { break }              // pruned
             if depth > 2 && Date() > deadline { break }
         }
         return best
-    }
-
-    /// Reward reaching a win in fewer plies (so the AI finishes games).
-    private static func depthBonus(_ state: GameState, toMove: PlayerColor, depth: Int) -> Int {
-        guard case .win = state.result else { return 0 }
-        return 0 // terminal magnitude already dominates; kept for clarity/extension
     }
 
     // MARK: Evaluation (zero-sum)
@@ -138,9 +171,10 @@ public enum HiveAI {
 
         var score = 0
         // Surrounding the enemy queen (and not being surrounded) dominates. The
-        // quadratic term makes the last couple of sides far more urgent.
-        score += 30 * (enemySurround * enemySurround - mySurround * mySurround)
-        score += 8 * (enemySurround - mySurround)
+        // quadratic term makes the last couple of sides far more urgent, so the
+        // AI presses the attack instead of merely obstructing.
+        score += 40 * (enemySurround * enemySurround - mySurround * mySurround)
+        score += 10 * (enemySurround - mySurround)
 
         // Mobility proxy: how many of each side's tiles are free to move.
         score += 2 * (mobility(state, me) - mobility(state, opp))

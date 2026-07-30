@@ -1,28 +1,32 @@
 import SwiftUI
 import HiveEngine
 
-/// Colours, fonts and per-bug styling for the whole app.
+/// Colours and per-bug styling for the whole app.
+///
+/// Every colour lives in the asset catalog (`Assets.xcassets/Hive*.colorset`),
+/// **not** as an RGB literal here — edit the palette in Xcode's asset editor.
+/// See CLAUDE.md → "Colours & assets".
 enum HiveTheme {
     // Table / background
-    static let bgTop = Color(red: 0.11, green: 0.15, blue: 0.20)
-    static let bgBottom = Color(red: 0.05, green: 0.08, blue: 0.12)
+    static let bgTop = Color("HiveBgTop")
+    static let bgBottom = Color("HiveBgBottom")
 
     // Tiles
-    static let whiteTileTop = Color(red: 0.96, green: 0.94, blue: 0.87)
-    static let whiteTileBottom = Color(red: 0.90, green: 0.86, blue: 0.76)
-    static let whiteTileBorder = Color(red: 0.79, green: 0.72, blue: 0.57)
-    static let whiteInk = Color(red: 0.16, green: 0.16, blue: 0.18)
+    static let whiteTileTop = Color("HiveWhiteTileTop")
+    static let whiteTileBottom = Color("HiveWhiteTileBottom")
+    static let whiteTileBorder = Color("HiveWhiteTileBorder")
+    static let whiteInk = Color("HiveWhiteInk")
 
-    static let blackTileTop = Color(red: 0.22, green: 0.23, blue: 0.26)
-    static let blackTileBottom = Color(red: 0.13, green: 0.13, blue: 0.16)
-    static let blackTileBorder = Color(red: 0.36, green: 0.38, blue: 0.44)
-    static let blackInk = Color(red: 0.95, green: 0.95, blue: 0.96)
+    static let blackTileTop = Color("HiveBlackTileTop")
+    static let blackTileBottom = Color("HiveBlackTileBottom")
+    static let blackTileBorder = Color("HiveBlackTileBorder")
+    static let blackInk = Color("HiveBlackInk")
 
     // Feedback
-    static let selection = Color(red: 1.00, green: 0.83, blue: 0.29)
-    static let target = Color(red: 0.20, green: 0.88, blue: 0.77)
-    static let lastMove = Color.white.opacity(0.75)
-    static let danger = Color(red: 0.94, green: 0.34, blue: 0.36)
+    static let selection = Color("HiveSelection")
+    static let target = Color("HiveTarget")
+    static let lastMove = Color("HiveLastMove")
+    static let danger = Color("HiveDanger")
 
     static func tileGradient(_ color: PlayerColor) -> LinearGradient {
         LinearGradient(
@@ -39,32 +43,32 @@ enum HiveTheme {
         color == .white ? whiteInk : blackInk
     }
 
-    /// Signature colour for each bug's emblem disc.
-    static func accent(_ bug: Bug) -> Color {
-        switch bug {
-        case .queen: return Color(red: 0.95, green: 0.72, blue: 0.05)
-        case .ant: return Color(red: 0.18, green: 0.61, blue: 0.86)
-        case .spider: return Color(red: 0.55, green: 0.37, blue: 0.24)
-        case .beetle: return Color(red: 0.48, green: 0.38, blue: 1.00)
-        case .grasshopper: return Color(red: 0.15, green: 0.68, blue: 0.38)
-        case .mosquito: return Color(red: 0.58, green: 0.64, blue: 0.65)
-        case .ladybug: return Color(red: 0.91, green: 0.30, blue: 0.24)
-        case .pillbug: return Color(red: 0.09, green: 0.63, blue: 0.52)
+    /// Signature colour for each bug's name label.
+    ///
+    /// On the cream **white** tiles the Queen's bright yellow and the
+    /// Grasshopper's mid-green wash out to near-invisibility, so those two get a
+    /// darker, higher-contrast variant when drawn on a white tile
+    /// (`HiveAccent…OnWhite`). Every other bug — and both bugs on black tiles —
+    /// keeps its vivid signature colour. Pass the tile's colour via `on:`; omit
+    /// it (the default) for contexts drawn on a dark background, e.g. the
+    /// game-over crown, which should stay vivid.
+    static func accent(_ bug: Bug, on tile: PlayerColor? = nil) -> Color {
+        if tile == .white {
+            switch bug {
+            case .queen: return Color("HiveAccentQueenOnWhite")
+            case .grasshopper: return Color("HiveAccentGrasshopperOnWhite")
+            default: break
+            }
         }
-    }
-
-    /// SF Symbol used on the emblem; falls back to the bug letter if the symbol
-    /// is missing on the running OS.
-    static func symbol(_ bug: Bug) -> String {
         switch bug {
-        case .queen: return "crown.fill"
-        case .ant: return "ant.fill"
-        case .spider: return "tortoise.fill"
-        case .beetle: return "ladybug.fill"
-        case .grasshopper: return "hare.fill"
-        case .mosquito: return "drop.fill"
-        case .ladybug: return "ladybug.fill"
-        case .pillbug: return "pills.fill"
+        case .queen: return Color("HiveAccentQueen")
+        case .ant: return Color("HiveAccentAnt")
+        case .spider: return Color("HiveAccentSpider")
+        case .beetle: return Color("HiveAccentBeetle")
+        case .grasshopper: return Color("HiveAccentGrasshopper")
+        case .mosquito: return Color("HiveAccentMosquito")
+        case .ladybug: return Color("HiveAccentLadybug")
+        case .pillbug: return Color("HiveAccentPillbug")
         }
     }
 }

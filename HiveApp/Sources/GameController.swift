@@ -5,9 +5,9 @@ import HiveEngine
 import UIKit
 #endif
 
-/// Options chosen when starting a game.
-struct GameOptions: Equatable {
-    enum Mode: String, CaseIterable, Identifiable { case vsAI, twoPlayer
+/// Options chosen when starting a game. `Codable` so a match can be cached.
+struct GameOptions: Equatable, Codable {
+    enum Mode: String, CaseIterable, Identifiable, Codable { case vsAI, twoPlayer
         var id: String { rawValue }
         var label: String { self == .vsAI ? "Vs. Computer" : "Two Players" }
     }
@@ -17,6 +17,16 @@ struct GameOptions: Equatable {
     var tournamentOpening: Bool = false
 
     var aiColor: PlayerColor { humanColor.opponent }
+
+    /// Preset for the "Play Tutorial" action: vs. a deliberately very weak,
+    /// forgiving bot, human plays White, no tournament restriction.
+    static var tutorial: GameOptions {
+        var options = GameOptions()
+        options.mode = .vsAI
+        options.humanColor = .white
+        options.difficulty = .megaEasy
+        return options
+    }
 }
 
 /// Owns the game state and drives all interaction. `@MainActor` because it feeds
@@ -30,6 +40,11 @@ final class GameController {
     private(set) var isThinking = false
     var options: GameOptions
 
+    /// A match found in the cache at launch, awaiting the player's "Continue /
+    /// Leave" choice. While non-nil the board shows a fresh game and the AI is
+    /// held back until the player decides.
+    private(set) var pendingResume: SavedGame?
+
     /// What the player currently has "picked up".
     enum Selection: Equatable {
         case none
@@ -40,10 +55,21 @@ final class GameController {
 
     init(options: GameOptions = GameOptions()) {
         self.options = options
-        self.state = GameState(config: .init(tournamentOpening: options.tournamentOpening))
+        self.state = GameState(config: Self.config(for: options))
+
         if ProcessInfo.processInfo.environment["HIVE_DEMO"] == "1" {
             loadDemo()
+            scheduleAIIfNeeded()
+            return
         }
+
+        // A match interrupted by the app being killed is offered back to the
+        // player ("Continue Game / Leave Game") before anything else runs.
+        if let saved = GamePersistence.load() {
+            pendingResume = saved
+            return
+        }
+
         scheduleAIIfNeeded()
     }
 
@@ -78,6 +104,10 @@ final class GameController {
     var current: PlayerColor { state.current }
     var canUndo: Bool { !history.isEmpty && !isThinking }
 
+    /// True once at least one tile is on the board — the match is under way and
+    /// its setup can no longer be changed (only left).
+    var hasStarted: Bool { state.board.tileCount > 0 }
+
     func humanControls(_ color: PlayerColor) -> Bool {
         options.mode == .twoPlayer || color != options.aiColor
     }
@@ -98,11 +128,13 @@ final class GameController {
 
     func newGame(options: GameOptions? = nil) {
         if let options { self.options = options }
-        state = GameState(config: .init(tournamentOpening: self.options.tournamentOpening))
+        state = GameState(config: Self.config(for: self.options))
         history.removeAll()
         selection = .none
         targets = []
         isThinking = false
+        pendingResume = nil
+        GamePersistence.clear()
         scheduleAIIfNeeded()
     }
 
@@ -118,6 +150,43 @@ final class GameController {
         }
         selection = .none
         targets = []
+        persist()
+    }
+
+    // MARK: Resume / leave
+
+    /// Continue the interrupted match the player chose to keep.
+    func resume() {
+        guard let saved = pendingResume else { return }
+        options = saved.options
+        state = saved.state
+        history = saved.history
+        selection = .none
+        targets = []
+        isThinking = false
+        pendingResume = nil
+        scheduleAIIfNeeded()
+        autoPassIfHumanStuck()
+    }
+
+    /// Discard the interrupted match and start fresh with its options.
+    func discardResume() {
+        let opts = pendingResume?.options ?? options
+        pendingResume = nil
+        newGame(options: opts)
+    }
+
+    /// Abandon the current match and return to a fresh, not-yet-started game with
+    /// the same options (so the setup sheet becomes editable again).
+    func leaveMatch() {
+        newGame(options: options)
+    }
+
+    /// Apply settings to the not-yet-started game. Ignored once play has begun —
+    /// there's no "Start" step; closing the setup sheet is what commits them.
+    func applySetup(_ newOptions: GameOptions) {
+        guard !hasStarted, newOptions != options else { return }
+        newGame(options: newOptions)
     }
 
     // MARK: Selection & tapping
@@ -199,7 +268,9 @@ final class GameController {
             state.apply(move)
         }
         if state.result != .ongoing { announceEnd() }
+        persist()
         scheduleAIIfNeeded()
+        autoPassIfHumanStuck()
     }
 
     // MARK: AI
@@ -227,9 +298,50 @@ final class GameController {
                     self.state.apply(move)
                 }
                 if self.state.result != .ongoing { self.announceEnd() }
+                self.persist()
                 self.scheduleAIIfNeeded()
+                self.autoPassIfHumanStuck()
             }
         }
+    }
+
+    /// If it's a human's turn but they have no legal placement or move, pass for
+    /// them automatically after a short beat. Prevents a "no moves" position from
+    /// soft-locking the game and lets the opponent keep pressing for the win.
+    private func autoPassIfHumanStuck() {
+        guard state.result == .ongoing, !isThinking,
+              humanControls(current), state.legalMoves() == [.pass] else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard let self, self.state.result == .ongoing, !self.isThinking,
+                  self.humanControls(self.current),
+                  self.state.legalMoves() == [.pass] else { return }
+            self.commit(.pass)
+        }
+    }
+
+    // MARK: Persistence
+
+    /// Cache the match after a move. Clears the cache once the game is over or
+    /// hasn't really begun — there's nothing to resume in those cases.
+    private func persist() {
+        guard state.result == .ongoing, hasStarted else {
+            GamePersistence.clear(); return
+        }
+        GamePersistence.save(SavedGame(options: options, state: state, history: history))
+    }
+
+    /// Save immediately — used when the app is about to be backgrounded/killed.
+    func persistNow() {
+        guard pendingResume == nil else { return }
+        persist()
+    }
+
+    /// Every match includes the Mosquito **and** the Ladybug for both sides,
+    /// alongside the base five bugs — not settings toggles, just part of the
+    /// standard roster this app ships.
+    private static func config(for options: GameOptions) -> GameConfig {
+        GameConfig(tournamentOpening: options.tournamentOpening, expansions: [.mosquito, .ladybug])
     }
 
     /// Runs the search off the main actor.

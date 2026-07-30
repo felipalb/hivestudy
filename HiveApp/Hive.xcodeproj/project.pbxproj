@@ -7,16 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		05F265F31E201456EC71A8F5 /* GamePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FE26269203DA6289F6B45CD /* GamePersistence.swift */; };
 		1C48D7D5FDFE8F6BE497E0C0 /* NewGameSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D257F0D6F58F690BEFCEF6A /* NewGameSheet.swift */; };
 		1DC5BDCDDE06AF021E1EA56B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E4BE7DD7C226C91E49E09BE /* ContentView.swift */; };
+		328CEB02B3ABE5B9B6D7282F /* TutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60E3E992302EDCE2092CF084 /* TutorialView.swift */; };
 		37A8269831BE14CB726A56E9 /* HandTrayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AA8838C5DBA907AD849AC2F /* HandTrayView.swift */; };
 		38E65E4F43A462D6715827D8 /* HiveEngine in Frameworks */ = {isa = PBXBuildFile; productRef = AF64E4725E4020EE0049EF8D /* HiveEngine */; };
 		69B4E6E3C651A813416C346E /* HexLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F036E4D6C087EE7D0231CC /* HexLayout.swift */; };
 		6F3E92B074EF44053D4ED348 /* TileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F024F6DD81154913E2A2E3 /* TileView.swift */; };
+		73C55B9B0684F50458063CBD /* BugIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28B1A1B24D64733EE7F4F347 /* BugIcon.swift */; };
 		7841210C97B8AA915CD385C1 /* GameController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EEEE9AD59923A78324B6D85 /* GameController.swift */; };
 		AF70EE4BDFF271F480D7AF1D /* HiveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83895E603148A99B5CAE7926 /* HiveApp.swift */; };
 		C4B1A0E3F11CD03E29664F17 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB30CCAF2BFF7612D80CF0F1 /* Assets.xcassets */; };
 		D806722956FB79D688A864E8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C3E57D8E0A3EED874700328 /* Theme.swift */; };
+		DAA6537C95E5D5A1C5009DDB /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9738C0594A60B7FF24C63D8A /* OnboardingView.swift */; };
 		EEE8C7043B3173EFF4C89B88 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E34298BE696C129009A8B60 /* BoardView.swift */; };
 /* End PBXBuildFile section */
 
@@ -25,12 +29,16 @@
 		0E34298BE696C129009A8B60 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		112147BFF1AFA7E7B3F0FBCB /* HiveEngine */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HiveEngine; path = ../HiveEngine; sourceTree = SOURCE_ROOT; };
 		1EEEE9AD59923A78324B6D85 /* GameController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameController.swift; sourceTree = "<group>"; };
+		28B1A1B24D64733EE7F4F347 /* BugIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugIcon.swift; sourceTree = "<group>"; };
 		29F024F6DD81154913E2A2E3 /* TileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileView.swift; sourceTree = "<group>"; };
 		2C3E57D8E0A3EED874700328 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		3FE26269203DA6289F6B45CD /* GamePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamePersistence.swift; sourceTree = "<group>"; };
+		60E3E992302EDCE2092CF084 /* TutorialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialView.swift; sourceTree = "<group>"; };
 		79238322435368EE46736320 /* Hive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		83895E603148A99B5CAE7926 /* HiveApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiveApp.swift; sourceTree = "<group>"; };
 		8AA8838C5DBA907AD849AC2F /* HandTrayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTrayView.swift; sourceTree = "<group>"; };
 		8E4BE7DD7C226C91E49E09BE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		9738C0594A60B7FF24C63D8A /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		B2F036E4D6C087EE7D0231CC /* HexLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexLayout.swift; sourceTree = "<group>"; };
 		BB30CCAF2BFF7612D80CF0F1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -51,14 +59,18 @@
 			isa = PBXGroup;
 			children = (
 				0E34298BE696C129009A8B60 /* BoardView.swift */,
+				28B1A1B24D64733EE7F4F347 /* BugIcon.swift */,
 				8E4BE7DD7C226C91E49E09BE /* ContentView.swift */,
 				1EEEE9AD59923A78324B6D85 /* GameController.swift */,
+				3FE26269203DA6289F6B45CD /* GamePersistence.swift */,
 				8AA8838C5DBA907AD849AC2F /* HandTrayView.swift */,
 				B2F036E4D6C087EE7D0231CC /* HexLayout.swift */,
 				83895E603148A99B5CAE7926 /* HiveApp.swift */,
 				0D257F0D6F58F690BEFCEF6A /* NewGameSheet.swift */,
+				9738C0594A60B7FF24C63D8A /* OnboardingView.swift */,
 				2C3E57D8E0A3EED874700328 /* Theme.swift */,
 				29F024F6DD81154913E2A2E3 /* TileView.swift */,
+				60E3E992302EDCE2092CF084 /* TutorialView.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -167,14 +179,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				EEE8C7043B3173EFF4C89B88 /* BoardView.swift in Sources */,
+				73C55B9B0684F50458063CBD /* BugIcon.swift in Sources */,
 				1DC5BDCDDE06AF021E1EA56B /* ContentView.swift in Sources */,
 				7841210C97B8AA915CD385C1 /* GameController.swift in Sources */,
+				05F265F31E201456EC71A8F5 /* GamePersistence.swift in Sources */,
 				37A8269831BE14CB726A56E9 /* HandTrayView.swift in Sources */,
 				69B4E6E3C651A813416C346E /* HexLayout.swift in Sources */,
 				AF70EE4BDFF271F480D7AF1D /* HiveApp.swift in Sources */,
 				1C48D7D5FDFE8F6BE497E0C0 /* NewGameSheet.swift in Sources */,
+				DAA6537C95E5D5A1C5009DDB /* OnboardingView.swift in Sources */,
 				D806722956FB79D688A864E8 /* Theme.swift in Sources */,
 				6F3E92B074EF44053D4ED348 /* TileView.swift in Sources */,
+				328CEB02B3ABE5B9B6D7282F /* TutorialView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

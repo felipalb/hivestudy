@@ -109,4 +109,52 @@ public enum Rules {
         }
         return results
     }
+
+    // MARK: Ladybug (over the top: up, over, then down — exactly three steps)
+
+    /// Destinations for a Ladybug at `start` (already lifted from `board`).
+    ///
+    /// It moves **exactly three steps**: the first two *on top of* the hive —
+    /// each onto an occupied cell — and the third *down* into an empty cell that
+    /// still touches the hive. It never ends on top. While crossing the top it
+    /// is **not** subject to the freedom-to-move gate (it walks over the tiles
+    /// rather than squeezing between them). It may not finish back on its own
+    /// starting cell.
+    public static func ladybugDestinations(on board: Board, from start: Hex) -> Set<Hex> {
+        var results: Set<Hex> = []
+        for up in board.occupiedNeighbors(start) {                      // step 1: climb onto a tile
+            for over in board.occupiedNeighbors(up) where over != up {  // step 2: cross to another tile
+                for down in board.emptyNeighbors(over) where down != start {  // step 3: drop to empty ground
+                    results.insert(down)
+                }
+            }
+        }
+        return results
+    }
+
+    // MARK: Mosquito (copies an adjacent tile's ability)
+
+    /// Destinations for a mosquito sitting at ground level: the union of every
+    /// move a Queen/Ant/Spider/Grasshopper/Beetle would have from `hex`, for each
+    /// distinct bug type touching it (a mosquito never copies another mosquito).
+    /// A mosquito that has climbed onto the hive by copying a Beetle is *not*
+    /// routed here — see `MoveGenerator`, which instead calls
+    /// `beetleDestinations` directly once it is on top.
+    public static func mosquitoGroundDestinations(on board: Board, from hex: Hex) -> Set<Hex> {
+        let neighborBugs = Set(hex.neighbors.compactMap { board.topPiece($0)?.bug }).subtracting([.mosquito])
+
+        var results: Set<Hex> = []
+        for bug in neighborBugs {
+            switch bug {
+            case .queen: results.formUnion(groundSlideSteps(on: board, from: hex))
+            case .ant: results.formUnion(antReachable(on: board, from: hex))
+            case .spider: results.formUnion(exactSlideDestinations(on: board, from: hex, steps: 3))
+            case .grasshopper: results.formUnion(grasshopperDestinations(on: board, from: hex))
+            case .beetle: results.formUnion(beetleDestinations(on: board, from: hex))
+            case .ladybug: results.formUnion(ladybugDestinations(on: board, from: hex))
+            case .mosquito, .pillbug: break // mosquito is never copyable; pillbug has no move yet
+            }
+        }
+        return results
+    }
 }

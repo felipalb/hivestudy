@@ -121,8 +121,19 @@ public enum MoveGenerator {
             return Rules.grasshopperDestinations(on: lifted, from: hex)
         case .beetle:
             return Rules.beetleDestinations(on: lifted, from: hex)
-        case .mosquito, .ladybug, .pillbug:
-            return [] // expansion movement not yet implemented
+        case .mosquito:
+            // Having climbed atop the hive (only possible by copying a Beetle),
+            // a mosquito is stuck copying the Beetle from then on — the tiles it
+            // now touches up there are irrelevant to what got it up there. A
+            // non-zero height *after* lifting means there was a tile beneath it.
+            if lifted.height(hex) > 0 {
+                return Rules.beetleDestinations(on: lifted, from: hex)
+            }
+            return Array(Rules.mosquitoGroundDestinations(on: lifted, from: hex))
+        case .ladybug:
+            return Array(Rules.ladybugDestinations(on: lifted, from: hex))
+        case .pillbug:
+            return [] // pillbug movement not yet implemented
         }
     }
 }

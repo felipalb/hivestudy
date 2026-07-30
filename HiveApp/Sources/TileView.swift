@@ -38,29 +38,24 @@ struct TileView: View {
         }
     }
 
+    /// The tile shows the bug's own icon above its actual name (not an initial),
+    /// both tinted in the bug's signature colour, sitting directly on the plain
+    /// black/white tile — no separate coloured plaque behind them.
+    /// (Split into sub-expressions to keep the Swift type-checker fast.)
     private var emblem: some View {
-        let accent = HiveTheme.accent(piece.bug)
-        return ZStack {
-            Circle()
-                .fill(accent.gradient)
-                .frame(width: size * 1.02, height: size * 1.02)
-                .overlay(Circle().stroke(.white.opacity(0.55), lineWidth: size * 0.05))
-                .shadow(color: accent.opacity(0.5), radius: size * 0.12)
-
-            Image(systemName: HiveTheme.symbol(piece.bug))
-                .font(.system(size: size * 0.62, weight: .black))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+        let fontSize: CGFloat = size * 0.24
+        let name = Text(piece.bug.tileName)
+            .font(.system(size: fontSize, weight: .heavy, design: .rounded))
+            .minimumScaleFactor(0.35)
+            .lineLimit(1)
+        let icon = BugIcon(bug: piece.bug)
+            .frame(width: size * 0.56, height: size * 0.56)
+        return VStack(spacing: size * 0.05) {
+            icon
+            name
         }
-        // Small letter badge so the species is unambiguous even at a glance.
-        .overlay(alignment: .bottomTrailing) {
-            Text(piece.bug.letter)
-                .font(.system(size: size * 0.42, weight: .heavy, design: .rounded))
-                .foregroundStyle(HiveTheme.ink(piece.color))
-                .padding(size * 0.10)
-                .background(Circle().fill(HiveTheme.tileGradient(piece.color)))
-                .overlay(Circle().stroke(HiveTheme.tileBorder(piece.color), lineWidth: 1))
-                .offset(x: size * 0.42, y: size * 0.42)
-        }
+        .foregroundStyle(HiveTheme.accent(piece.bug, on: piece.color))
+        .shadow(color: .black.opacity(0.4), radius: 1, y: 0.5)
+        .frame(maxWidth: layout.tileWidth * 0.92)
     }
 }

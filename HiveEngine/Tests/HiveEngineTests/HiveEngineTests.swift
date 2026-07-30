@@ -171,6 +171,142 @@ private struct SeededRNG: RandomNumberGenerator {
     }
 }
 
+// MARK: - Ladybug (three steps: up, over, down)
+
+@Suite struct LadybugTests {
+    // A two-tile "domino" hive; the ladybug starts at (2,0) touching it.
+    private var domino: Board {
+        board([(Hex(0, 0), .ant, .white), (Hex(1, 0), .ant, .white)])
+    }
+
+    @Test func climbsOverTheHiveAndDropsDown() {
+        // From (2,0) it must climb onto (1,0), cross to (0,0), then drop into one
+        // of (0,0)'s five empty sides. Every landing is empty ground, never a
+        // cell it climbed over.
+        let dests = Rules.ladybugDestinations(on: domino, from: Hex(2, 0))
+        #expect(dests == Set([Hex(1, -1), Hex(0, -1), Hex(-1, 0), Hex(-1, 1), Hex(0, 1)]))
+        #expect(!dests.contains(Hex(0, 0)))   // never ends on top of a tile
+        #expect(!dests.contains(Hex(1, 0)))
+        #expect(!dests.contains(Hex(2, 0)))   // never returns to its own start
+    }
+
+    @Test func needsTwoTilesToWalkOver() {
+        // A single lone tile: the ladybug can climb up but has nowhere to cross to.
+        let b = board([(Hex(0, 0), .ant, .white)])
+        #expect(Rules.ladybugDestinations(on: b, from: Hex(1, 0)).isEmpty)
+    }
+
+    @Test func generatorRoutesLadybugAndRespectsOneHive() {
+        // A real state: white ladybug on the end of a line, white Queen down so
+        // pieces may move. The generator must produce the over-the-top landings.
+        let b = board([
+            (Hex(0, 0), .queen, .white),
+            (Hex(1, 0), .ant, .white),
+            (Hex(2, 0), .ladybug, .white)
+        ])
+        let state = GameState(board: b, current: .white,
+                              unplaced: [], movesMade: [.white: 3, .black: 3])
+        var lifted = b
+        lifted.pop(at: Hex(2, 0))
+        let expected = Rules.ladybugDestinations(on: lifted, from: Hex(2, 0))
+        #expect(!expected.isEmpty)
+        #expect(Set(MoveGenerator.destinations(for: 2, in: state)) == expected)
+    }
+
+    @Test func mosquitoCanCopyLadybug() {
+        // Mosquito (lifted, at origin) touches a ladybug at (1,0); it should gain
+        // the ladybug's over-the-top destinations.
+        let b = board([(Hex(1, 0), .ladybug, .white), (Hex(2, 0), .ant, .white)])
+        let dests = Rules.mosquitoGroundDestinations(on: b, from: .origin)
+        #expect(!dests.isEmpty)
+        #expect(dests == Rules.ladybugDestinations(on: b, from: .origin))
+    }
+}
+
+// MARK: - Tutorial finish-drill geometry (guards the app's scripted win board)
+
+@Suite struct TutorialScenarioTests {
+    /// The guided tutorial's final drill hands White a Grasshopper that jumps
+    /// into the last open side of Black's Queen to win. The app rebuilds this
+    /// exact board; this test guards the hand-computed coordinates.
+    @Test func grasshopperJumpCompletesTheSurround() {
+        let b = board([
+            (Hex(0, 0), .queen, .black),        // id 0 — Black Queen, 5 sides filled
+            (Hex(1, 0), .ant, .black),          // id 1  (E)
+            (Hex(1, -1), .beetle, .white),      // id 2  (NE)
+            (Hex(0, -1), .spider, .black),      // id 3  (NW)
+            (Hex(-1, 1), .ant, .white),         // id 4  (SW)
+            (Hex(0, 1), .grasshopper, .black),  // id 5  (SE)
+            (Hex(1, 1), .queen, .white),        // id 6  — White Queen (so White may move)
+            (Hex(2, 0), .grasshopper, .white)   // id 7  — the winning mover
+        ])
+        let state = GameState(board: b, current: .white,
+                              unplaced: [], movesMade: [.white: 5, .black: 5])
+        #expect(state.result == .ongoing)
+        #expect(state.queenSurroundCount(.black) == 5)         // gap at (-1,0)
+
+        let dests = MoveGenerator.destinations(for: 7, in: state)
+        #expect(dests.contains(Hex(-1, 0)))                    // the winning jump
+
+        let after = state.applying(.move(pieceID: 7, from: Hex(2, 0), to: Hex(-1, 0)))
+        #expect(after.result == .win(.white))
+    }
+}
+
+// MARK: - Mosquito (copies an adjacent tile's ability)
+
+@Suite struct MosquitoTests {
+    @Test func copiesAdjacentAntAbility() {
+        // Same domino shape as the Ant tests, but the mover copies it as a mosquito.
+        let b = board([(Hex(0, 0), .ant, .white), (Hex(1, 0), .ant, .white)])
+        let dests = Rules.mosquitoGroundDestinations(on: b, from: Hex(2, 0))
+        #expect(dests == Rules.antReachable(on: b, from: Hex(2, 0)))
+    }
+
+    @Test func copiesAdjacentGrasshopperAbility() {
+        let b = board([(Hex(1, 0), .grasshopper, .white), (Hex(2, 0), .ant, .white)])
+        let dests = Rules.mosquitoGroundDestinations(on: b, from: .origin)
+        #expect(dests == Set(Rules.grasshopperDestinations(on: b, from: .origin)))
+        #expect(dests == [Hex(3, 0)])
+    }
+
+    @Test func unionsAllDistinctNeighborAbilities() {
+        // Touches an Ant (E) and, along a separate line, a Grasshopper (SE) with
+        // another tile to jump over — the mosquito should get *both* abilities.
+        let b = board([
+            (Hex(1, 0), .ant, .white),
+            (Hex(0, 1), .grasshopper, .white),
+            (Hex(0, 2), .ant, .black)
+        ])
+        let dests = Rules.mosquitoGroundDestinations(on: b, from: .origin)
+        let antPart = Rules.antReachable(on: b, from: .origin)
+        let hopperPart = Set(Rules.grasshopperDestinations(on: b, from: .origin))
+        #expect(!antPart.isEmpty && !hopperPart.isEmpty)
+        #expect(dests == antPart.union(hopperPart))
+    }
+
+    @Test func neverCopiesAnotherMosquito() {
+        let b = board([(Hex(1, 0), .mosquito, .white)])
+        #expect(Rules.mosquitoGroundDestinations(on: b, from: .origin).isEmpty)
+    }
+
+    @Test func atopHiveMosquitoMovesOnlyAsBeetle() {
+        // A mosquito that climbed onto an ant (by having earlier copied a Beetle)
+        // is now itself atop the hive — from here on it can only move as a Beetle,
+        // regardless of what it currently touches.
+        var b = board([(Hex(0, 0), .queen, .black), (Hex(1, 0), .ant, .black)])
+        b.push(piece(50, .mosquito, .black), at: Hex(1, 0))
+        let state = GameState(board: b, current: .black,
+                              unplaced: [], movesMade: [.white: 3, .black: 3])
+
+        var lifted = b
+        lifted.pop(at: Hex(1, 0))
+        let expected = Set(Rules.beetleDestinations(on: lifted, from: Hex(1, 0)))
+
+        #expect(Set(MoveGenerator.destinations(for: 50, in: state)) == expected)
+    }
+}
+
 // MARK: - Placement rules (via GameState)
 
 @Suite struct PlacementTests {
