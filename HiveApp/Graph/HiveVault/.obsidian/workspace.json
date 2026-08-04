@@ -1,0 +1,232 @@
+{
+  "main": {
+    "id": "c55874b1ae700d4f",
+    "type": "split",
+    "children": [
+      {
+        "id": "9daf496c8f31659f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "4e627d5cd6f494ae",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "Nova aba"
+            }
+          }
+        ]
+      },
+      {
+        "id": "c154e555a37dffc4",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b04ead6146f516c4",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Visualização em gráfico"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "81b02a9e5b1d41ec",
+    "type": "split",
+    "children": [
+      {
+        "id": "90c8db72ef3e62aa",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b4982a6f3d3e2ad6",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorador de arquivos"
+            }
+          },
+          {
+            "id": "2b72dcd47e021c67",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Procurar"
+            }
+          },
+          {
+            "id": "f6460f135a9746e3",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Marcadores"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "ab3b6dd5c8df128c",
+    "type": "split",
+    "children": [
+      {
+        "id": "26908a76573f3bd7",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "3542d6d4de8be516",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Links inversos"
+            }
+          },
+          {
+            "id": "95a1f5a17438ac1e",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Links de saída"
+            }
+          },
+          {
+            "id": "5f35163ae2a042b8",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Etiquetas"
+            }
+          },
+          {
+            "id": "1a3895404d38b128",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Todas as propriedades"
+            }
+          },
+          {
+            "id": "99a2b0fd9bf9032d",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Sumário"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Abrir a troca rápida": false,
+      "graph:Abrir visualização em gráfico": false,
+      "canvas:Criar novo canvas": false,
+      "daily-notes:Abrir a nota de hoje": false,
+      "templates:Inserir modelo": false,
+      "command-palette:Abrir paleta de comandos": false,
+      "bases:Criar nova base": false
+    }
+  },
+  "active": "b04ead6146f516c4",
+  "lastOpenFiles": [
+    "50-Testes/TEST-GraphHarness.md",
+    "60-Codigo/COD-AI.md",
+    "60-Codigo/COD-Piece.md",
+    "60-Codigo/COD-GameState.md",
+    "60-Codigo/COD-MoveGenerator.md",
+    "60-Codigo/COD-Rules.md",
+    "60-Codigo/COD-Board.md",
+    "60-Codigo/COD-Hex.md",
+    "50-Testes/TEST-TutorialScenarioTests.md",
+    "50-Testes/TEST-AITests.md",
+    "50-Testes/TEST-SelfPlayTests.md",
+    "50-Testes/TEST-SelfPlayTests.md.tmp.76855.806b52b9fbee",
+    "50-Testes/TEST-WinTests.md",
+    "50-Testes/TEST-PinningTests.md",
+    "50-Testes/TEST-PlacementTests.md",
+    "50-Testes/TEST-MosquitoTests.md",
+    "50-Testes/TEST-LadybugTests.md",
+    "50-Testes/TEST-GrasshopperTests.md",
+    "50-Testes/TEST-BeetleTests.md",
+    "50-Testes/TEST-SpiderAntTests.md",
+    "50-Testes/TEST-SlideTests.md",
+    "50-Testes/TEST-ConnectivityTests.md",
+    "50-Testes/TEST-HexTests.md",
+    "40-Conceitos-Grafo/Teste por Propriedades.md",
+    "40-Conceitos-Grafo/Teste Metamórfico.md",
+    "40-Conceitos-Grafo/Teste Baseado em Modelo (MBT).md",
+    "40-Conceitos-Grafo/Critérios de Cobertura de Grafo.md",
+    "60-Codigo",
+    "50-Testes",
+    "40-Conceitos-Grafo",
+    "30-Pecas",
+    "20-Mecanicas",
+    "10-Requisitos",
+    "00-Central"
+  ]
+}

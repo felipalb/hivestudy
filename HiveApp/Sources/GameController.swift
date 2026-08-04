@@ -228,6 +228,17 @@ final class GameController {
         return false
     }
 
+    /// True when the player has any piece picked up — a tile already on the
+    /// board *or* a tile in the hand tray. Drives the subtle "hold to see piece
+    /// movement" hint; both kinds of selection can be press-and-held to read the
+    /// bug's movement rules.
+    var isPieceSelected: Bool {
+        switch selection {
+        case .board, .hand: return true
+        case .none: return false
+        }
+    }
+
     private func selectBoardPiece(id: Int, at hex: Hex) {
         if case let .board(sel, _) = selection, sel == id {
             clearSelection(); return

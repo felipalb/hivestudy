@@ -174,6 +174,26 @@ pinch-to-zoom (`zoomGesture`, still present and unchanged). The board auto-fits
 the hive until the player pans/zooms (`userAdjusted`), and recenter re-enables
 auto-fit.
 
+### Press-and-hold to inspect a piece
+Long-pressing (`.onLongPressGesture`, 0.4s) opens `PieceMoveInfoOverlay` — a
+focused card explaining just that bug's movement. It works in **two** places
+with identical behaviour:
+- **On the board** (`BoardView`) — any tile on **top** of the hive.
+- **In the hand tray** (`HandTrayView`) — any chip; it hands up a display-only
+  `Piece(id: -1, …)` since a hand tile has no board identity.
+
+Both fire a rigid haptic and hand the `Piece` up via an `onInspectPiece`
+closure. The overlay is hosted on the **root `ContentView`** (as
+`inspectedPiece`), like the other modal overlays, so its scrim sits above the
+hand trays. The blurb comes from `RulesView.bugs`, the *same* source the rules
+screen uses, so both stay in sync — add a tile's blurb there and it appears in
+both places. The gesture works on any tile (own or opponent's, selected or
+not), which is a superset of "hold the selected piece". Whenever the player has
+any piece picked up — a board tile *or* a hand chip
+(`GameController.isPieceSelected`) — a subtle "Hold to see piece movement"
+capsule (`ContentView.selectionHint`) appears just above the trays to teach the
+gesture.
+
 ### Expansion roster (Mosquito + Ladybug, both sides, always on)
 Both the **Mosquito and the Ladybug are permanent members of the roster** for
 both colours in every match — not settings toggles.

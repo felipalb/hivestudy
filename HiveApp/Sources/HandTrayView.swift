@@ -1,6 +1,10 @@
 import SwiftUI
 import HiveEngine
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 /// A player's remaining tiles, tappable to pick one for placement.
 ///
 /// Tile size is computed from the available width (not fixed) so tiles read as
@@ -11,6 +15,8 @@ import HiveEngine
 struct HandTrayView: View {
     let game: GameController
     let color: PlayerColor
+    /// Press-and-hold on a chip asks the root to explain that bug's movement.
+    var onInspectPiece: (Piece) -> Void = { _ in }
 
     private let labelWidth: CGFloat = 42
     private let rowSpacing: CGFloat = 10
@@ -96,9 +102,21 @@ struct HandTrayView: View {
                     size: chipSize
                 )
                 .onTapGesture { game.selectHand(entry.bug, color) }
+                // Same press-and-hold-to-inspect gesture as the board tiles, so
+                // a hand chip (selected or not) reveals its movement rules too.
+                .onLongPressGesture(minimumDuration: 0.4) { inspect(entry.bug) }
             }
         }
         .padding(.vertical, 2)
+    }
+
+    /// Fire a firm tactile tick and hand a display-only piece up to the root,
+    /// which presents the movement-explanation modal.
+    private func inspect(_ bug: Bug) {
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        #endif
+        onInspectPiece(Piece(id: -1, bug: bug, color: color))
     }
 
     /// A soft fade at the leading/trailing edges of the scrolling tray. Used as

@@ -1,6 +1,10 @@
 import SwiftUI
 import HiveEngine
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 /// The scrollable, zoomable board. Tiles are real views (so moves animate and
 /// each tile is individually tappable); an auto-fit camera keeps the hive framed
 /// until the player takes manual control by panning or zooming.
@@ -9,6 +13,8 @@ struct BoardView: View {
     var baseHexSize: CGFloat = 30
     /// Launches the guided tutorial overlay (owned by the root ContentView).
     var onStartTutorial: () -> Void = {}
+    /// Press-and-hold on a tile asks the root to explain that piece's movement.
+    var onInspectPiece: (Piece) -> Void = { _ in }
 
     @State private var zoom: CGFloat = 1
     @State private var pan: CGSize = .zero
@@ -77,6 +83,10 @@ struct BoardView: View {
                     .zIndex(rt.z)
                     .allowsHitTesting(rt.isTop)
                     .onTapGesture { game.tapHex(rt.hex) }
+                    // Press-and-hold any tile on top of the hive to read what it
+                    // does. Works whether or not it's the currently selected
+                    // piece; the "Hold to see piece movement" hint teaches it.
+                    .onLongPressGesture(minimumDuration: 0.4) { inspect(rt.piece) }
                     .transition(.scale(scale: 0.2).combined(with: .opacity))
             }
             ForEach(emptyTargets, id: \.self) { hex in
@@ -87,6 +97,15 @@ struct BoardView: View {
                     .transition(.opacity)
             }
         }
+    }
+
+    /// Fire a firm tactile tick and hand the held piece up to the root, which
+    /// presents the movement-explanation modal.
+    private func inspect(_ piece: Piece) {
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        #endif
+        onInspectPiece(piece)
     }
 
     private var background: some View {

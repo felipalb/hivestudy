@@ -7,16 +7,27 @@ struct ContentView: View {
     @State private var showLeaveConfirm = false
     @State private var showOnboarding = !OnboardingState.hasSeenTutorial
     @State private var showTutorial = false
+    /// The board piece the player is pressing-and-holding to inspect; non-nil
+    /// while the movement-explanation modal is up.
+    @State private var inspectedPiece: Piece?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
-            BoardView(game: game, onStartTutorial: { showTutorial = true })
+            BoardView(game: game,
+                      onStartTutorial: { showTutorial = true },
+                      onInspectPiece: { inspectedPiece = $0 })
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 topBar
                 Spacer()
+                // Subtle coaching that a held piece reveals its movement rules —
+                // for a picked-up board tile or a selected hand chip alike.
+                if game.isPieceSelected {
+                    selectionHint
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
                 trays
             }
             .padding(.horizontal, 12)
@@ -74,12 +85,22 @@ struct ContentView: View {
                 .transition(.opacity)
                 .zIndex(15)
             }
+
+            // Opened by press-and-holding a tile on the board: a focused card
+            // explaining just that piece's movement.
+            if let piece = inspectedPiece {
+                PieceMoveInfoOverlay(piece: piece, onDismiss: { inspectedPiece = nil })
+                    .transition(.opacity)
+                    .zIndex(8)
+            }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: game.result)
         .animation(.easeInOut(duration: 0.25), value: game.pendingResume != nil)
         .animation(.easeInOut(duration: 0.2), value: showLeaveConfirm)
         .animation(.easeInOut(duration: 0.25), value: showOnboarding)
         .animation(.easeInOut(duration: 0.25), value: showTutorial)
+        .animation(.easeInOut(duration: 0.2), value: inspectedPiece)
+        .animation(.easeInOut(duration: 0.2), value: game.isPieceSelected)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showMenu) { GameMenuSheet(game: game) }
         // Cache the match whenever the app leaves the foreground, so nothing is
@@ -165,10 +186,27 @@ struct ContentView: View {
 
     private var trays: some View {
         VStack(spacing: 8) {
-            HandTrayView(game: game, color: .black)
-            HandTrayView(game: game, color: .white)
+            HandTrayView(game: game, color: .black, onInspectPiece: { inspectedPiece = $0 })
+            HandTrayView(game: game, color: .white, onInspectPiece: { inspectedPiece = $0 })
         }
         .padding(.bottom, 6)
+    }
+
+    /// Sits just above the hand trays while a board piece is picked up, nudging
+    /// the player to press-and-hold for that piece's movement rules.
+    private var selectionHint: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "hand.tap.fill")
+                .font(.system(size: 12, weight: .semibold))
+            Text("Hold to see piece movement")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+        }
+        .foregroundStyle(.white.opacity(0.9))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Capsule().fill(.ultraThinMaterial))
+        .overlay(Capsule().stroke(.white.opacity(0.12), lineWidth: 1))
+        .padding(.bottom, 10)
     }
 }
 
@@ -343,6 +381,54 @@ private struct LeaveConfirmOverlay: View {
                 .foregroundStyle(.white)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Explains a single piece's movement, opened by press-and-holding that tile on
+/// the board. The blurb is the same one the rules screen uses, so both stay in
+/// sync from one source (`RulesView.bugs`).
+private struct PieceMoveInfoOverlay: View {
+    let piece: Piece
+    let onDismiss: () -> Void
+
+    private var movementText: String {
+        RulesView.bugs.first { $0.0 == piece.bug }?.1
+            ?? "Tap a highlighted cell to move this piece."
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.6).ignoresSafeArea()
+                .onTapGesture { onDismiss() }
+            VStack(spacing: 16) {
+                TileView(piece: piece, size: 30)
+                    .frame(width: 68, height: 68)
+                Text(piece.bug.displayName)
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(movementText)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                Button(action: onDismiss) {
+                    Text("Got it")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(HiveTheme.selection)
+                        )
+                        .foregroundStyle(.black)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(28)
+            .frame(maxWidth: 340)
+            .background(overlayCard)
+            .padding(30)
+        }
     }
 }
 
