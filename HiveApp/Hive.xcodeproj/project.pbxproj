@@ -24,6 +24,7 @@
 		AF70EE4BDFF271F480D7AF1D /* HiveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83895E603148A99B5CAE7926 /* HiveApp.swift */; };
 		C4B1A0E3F11CD03E29664F17 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB30CCAF2BFF7612D80CF0F1 /* Assets.xcassets */; };
 		D806722956FB79D688A864E8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C3E57D8E0A3EED874700328 /* Theme.swift */; };
+		DA187479883E0F6865409606 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB264E34EACDB401A26DA71 /* MotionManager.swift */; };
 		DAA6537C95E5D5A1C5009DDB /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9738C0594A60B7FF24C63D8A /* OnboardingView.swift */; };
 		E18B8D7470E494DD6DDD8D6C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21180093ED3B285861AF5AD /* HomeView.swift */; };
 		EEE8C7043B3173EFF4C89B88 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E34298BE696C129009A8B60 /* BoardView.swift */; };
@@ -33,6 +34,7 @@
 		0D257F0D6F58F690BEFCEF6A /* NewGameSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewGameSheet.swift; sourceTree = "<group>"; };
 		0E34298BE696C129009A8B60 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		112147BFF1AFA7E7B3F0FBCB /* HiveEngine */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HiveEngine; path = ../HiveEngine; sourceTree = SOURCE_ROOT; };
+		1CB264E34EACDB401A26DA71 /* MotionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
 		1EEEE9AD59923A78324B6D85 /* GameController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameController.swift; sourceTree = "<group>"; };
 		28B1A1B24D64733EE7F4F347 /* BugIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugIcon.swift; sourceTree = "<group>"; };
 		29F024F6DD81154913E2A2E3 /* TileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileView.swift; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 				B2F036E4D6C087EE7D0231CC /* HexLayout.swift */,
 				83895E603148A99B5CAE7926 /* HiveApp.swift */,
 				A21180093ED3B285861AF5AD /* HomeView.swift */,
+				1CB264E34EACDB401A26DA71 /* MotionManager.swift */,
 				CC4536649F990CFC9838C525 /* MovementDiagramView.swift */,
 				0D257F0D6F58F690BEFCEF6A /* NewGameSheet.swift */,
 				9738C0594A60B7FF24C63D8A /* OnboardingView.swift */,
@@ -205,6 +208,7 @@
 				69B4E6E3C651A813416C346E /* HexLayout.swift in Sources */,
 				AF70EE4BDFF271F480D7AF1D /* HiveApp.swift in Sources */,
 				E18B8D7470E494DD6DDD8D6C /* HomeView.swift in Sources */,
+				DA187479883E0F6865409606 /* MotionManager.swift in Sources */,
 				8B81B9A8749A51973DDF5183 /* MovementDiagramView.swift in Sources */,
 				1C48D7D5FDFE8F6BE497E0C0 /* NewGameSheet.swift in Sources */,
 				DAA6537C95E5D5A1C5009DDB /* OnboardingView.swift in Sources */,

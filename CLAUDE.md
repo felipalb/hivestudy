@@ -165,26 +165,26 @@ the game randomly determines whether the player gets **White** (moves first) or
 - If Black is drawn, the AI starts calculating its opening move immediately once
   the draw overlay dismisses.
 
-### Hero Home Screen (`HomeView.swift`) & App Navigation
+### Hero Home Screen (`HomeView.swift`) & Gyroscope Parallax (`MotionManager.swift`)
 The initial app entry point is a dedicated, visually stunning **Home Screen**:
-- **3D Hexagon Showcase**: Centered towards the top, displaying a large 3D
-  hexagonal tile rotating with smooth Y/X perspective tilts (`Hero3DShowcase`).
-  - Seamlessly cycles through all 7 bugs in the game (`Queen`, `Spider`, `Beetle`,
-    `Grasshopper`, `Ant`, `Mosquito`, `Ladybug`), alternating tile color (White / Black).
-  - Ambient glowing halo and orbiting micro-particles dynamically shift to each
-    bug's signature accent color.
-  - Bug name badge dynamically highlights underneath.
-- **Top-left button**: Dedicated **"Configurações"** button (`gearshape.fill`)
-  opening `GameMenuSheet`.
+- **3D Hero Showcase**: Centered towards the top, displaying a large 3D
+  hexagonal tile with smooth Y/X perspective tilts (`Hero3DShowcase`).
+  - Automatically flips every **20 seconds** to cycle through the 7 bugs and alternating black/white colors.
+  - **Tap to Flip**: Tapping the piece immediately triggers a 360° flip animation to the next bug and resets the 20-second timer.
+  - Clean, badge-free tile presentation.
+- **Physical Gyroscope Parallax (`MotionManager.swift`)**:
+  - Leverages `CoreMotion` (`CMMotionManager`) to read 60Hz real-time device attitude (pitch and roll).
+  - Smooths raw sensor readings with an exponential moving average.
+  - **Tile 3D Tilt**: Tilts the 3D piece dynamically in response to how the user holds and angles the physical device.
+  - **Multi-layer Depth**: The piece shifts forward, while ambient halo glow and floating particles shift at different parallax depth layers.
+  - **Dynamic Specular Sheen**: A light reflection glint glides across the hexagon face based on device angle.
+  - **Realistic Shadow Projection**: Shadows project and spread in the opposite direction of the tilt.
+  - **Interactive Drag Fallback**: Allows dragging with touch/finger on screen with spring-back physics.
+- **Top-left button**: Dedicated **"Configurações"** button (`gearshape.fill`) opening `GameMenuSheet`.
 - **Main Action Buttons**:
-  1. **"Jogar contra bots"**: Vibrant hero gradient CTA button. Initiates the match
-     by launching the 3D coin toss (`ColorDrawOverlay`) and smoothly transitioning
-     to the game board (`currentScreen = .game`).
-  2. **"Online"**: Frosted glass card with `"EM BREVE"` badge (displays a gentle
-     toast notice upon tap).
+  1. **"Jogar contra bots"**: Vibrant hero gradient CTA button. Initiates match via 3D coin toss (`ColorDrawOverlay`).
+  2. **"Online"**: Frosted glass card with `"EM BREVE"` badge (displays a gentle toast notice upon tap).
   3. **"Jogar tutorial"**: Glassmorphic CTA opening the interactive guided tutorial (`TutorialView`).
-- **Return to Home**: Abandoning a match via the top-right red "X" button or
-  tapping "Voltar ao Início" from the game over screen returns smoothly to the Home Screen.
 
 ### Clean in-game board & streamlined "Configurações e Menu"
 The board is completely clean of floating side buttons.

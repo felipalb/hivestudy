@@ -291,10 +291,13 @@ struct HomeView: View {
     }
 }
 
-// MARK: - 3D Hexagon Showcase Component
+// MARK: - 3D Hexagon Showcase Component with Gyroscope Parallax & Interactive Flip
 
 private struct Hero3DShowcase: View {
     private let bugRoster: [Bug] = [.queen, .spider, .beetle, .grasshopper, .ant, .mosquito, .ladybug]
+
+    @StateObject private var motion = MotionManager()
+    @State private var dragOffset: CGSize = .zero
 
     @State private var currentBugIndex = 0
     @State private var rotationY: Double = 0
@@ -302,6 +305,7 @@ private struct Hero3DShowcase: View {
     @State private var isFlipping = false
     @State private var tileColor: PlayerColor = .white
     @State private var glowScale: CGFloat = 1.0
+    @State private var rotationTask: Task<Void, Never>?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -313,68 +317,115 @@ private struct Hero3DShowcase: View {
         HiveTheme.accent(currentBug, on: tileColor)
     }
 
+    // Parallax calculations combining device motion + touch drag
+    private var effectiveRoll: Double {
+        motion.roll + Double(dragOffset.width / 130.0)
+    }
+
+    private var effectivePitch: Double {
+        motion.pitch - Double(dragOffset.height / 130.0)
+    }
+
+    private var tiltX: Double {
+        -effectivePitch * 26.0
+    }
+
+    private var tiltY: Double {
+        effectiveRoll * 26.0
+    }
+
     var body: some View {
         ZStack {
-            // Ambient dynamic color halo glow
+            // Ambient dynamic color halo glow with subtle parallax
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [currentAccent.opacity(0.40), currentAccent.opacity(0.0)],
+                        colors: [currentAccent.opacity(0.42), currentAccent.opacity(0.0)],
                         center: .center,
                         startRadius: 20,
-                        endRadius: 130
+                        endRadius: 135
                     )
                 )
-                .frame(width: 260, height: 260)
+                .frame(width: 270, height: 270)
                 .scaleEffect(glowScale)
+                .offset(x: effectiveRoll * 6, y: -effectivePitch * 6)
                 .animation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true), value: glowScale)
 
-            // Orbiting ambient micro-particles
+            // Orbiting ambient micro-particles with middle-layer parallax
             ambientParticles
+                .offset(x: effectiveRoll * 10, y: -effectivePitch * 10)
 
-            VStack(spacing: 12) {
-                // 3D Hexagon Tile
-                ZStack {
-                    TileView(
-                        piece: Piece(id: -1, bug: currentBug, color: tileColor),
-                        size: 58
+            // 3D Hexagon Tile with Gyro Parallax + Specular Reflection + Dynamic Shadow + Tap to Flip
+            ZStack {
+                TileView(
+                    piece: Piece(id: -1, bug: currentBug, color: tileColor),
+                    size: 58
+                )
+                .overlay {
+                    // Specular light sheen that glints across the face as the phone tilts
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0.0),
+                            .init(color: .white.opacity(0.24), location: max(0.1, min(0.9, 0.45 + effectiveRoll * 0.3 + effectivePitch * 0.3))),
+                            .init(color: .clear, location: max(0.2, min(1.0, 0.70 + effectiveRoll * 0.3 + effectivePitch * 0.3)))
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-                    .shadow(color: currentAccent.opacity(0.6), radius: 24, y: 8)
-                    .shadow(color: .black.opacity(0.6), radius: 16, y: 12)
+                    .clipShape(RegularHexagon())
+                    .allowsHitTesting(false)
                 }
-                .rotation3DEffect(
-                    .degrees(rotationY),
-                    axis: (x: 0.12, y: 1.0, z: 0.0),
-                    perspective: 0.65
+                .shadow(
+                    color: currentAccent.opacity(0.60),
+                    radius: 24,
+                    x: -effectiveRoll * 20,
+                    y: 10 + effectivePitch * 20
                 )
-                .rotation3DEffect(
-                    .degrees(rotationX),
-                    axis: (x: 1.0, y: 0.0, z: 0.0),
-                    perspective: 0.65
+                .shadow(
+                    color: .black.opacity(0.68),
+                    radius: 18,
+                    x: -effectiveRoll * 26,
+                    y: 16 + effectivePitch * 26
                 )
-
-                // Bug Name Badge with matching accent
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(currentAccent)
-                        .frame(width: 6, height: 6)
-                    Text(currentBug.displayName.uppercased())
-                        .font(.system(size: 12, weight: .heavy, design: .rounded))
-                        .tracking(2.5)
-                        .foregroundStyle(currentAccent)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(Color.black.opacity(0.45)))
-                .overlay(Capsule().stroke(currentAccent.opacity(0.4), lineWidth: 1))
-                .animation(.easeInOut(duration: 0.35), value: currentBugIndex)
             }
+            .contentShape(RegularHexagon())
+            .offset(x: effectiveRoll * 14, y: -effectivePitch * 14)
+            .rotation3DEffect(
+                .degrees(rotationY + tiltY),
+                axis: (x: 0.08, y: 1.0, z: 0.0),
+                perspective: 0.60
+            )
+            .rotation3DEffect(
+                .degrees(rotationX + tiltX),
+                axis: (x: 1.0, y: 0.0, z: 0.0),
+                perspective: 0.60
+            )
+            .onTapGesture {
+                flipToNextPiece()
+                startRotationLoop()
+            }
+            .gesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { value in
+                        dragOffset = value.translation
+                    }
+                    .onEnded { _ in
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.65)) {
+                            dragOffset = .zero
+                        }
+                    }
+            )
         }
         .onAppear {
             glowScale = 1.15
+            motion.start()
             if !reduceMotion {
                 startRotationLoop()
             }
+        }
+        .onDisappear {
+            rotationTask?.cancel()
+            motion.stop()
         }
     }
 
@@ -405,29 +456,44 @@ private struct Hero3DShowcase: View {
         }
     }
 
-    // MARK: - 3D Animation Loop
+    // MARK: - 3D Piece Flip & 20-Second Loop
+
+    private func flipToNextPiece() {
+        guard !isFlipping else { return }
+        isFlipping = true
+        Haptics.selection()
+
+        Task { @MainActor in
+            // Half flip
+            withAnimation(.easeInOut(duration: 0.45)) {
+                rotationY += 180
+                rotationX = 14 * sin(rotationY * .pi / 180)
+            }
+
+            try? await Task.sleep(for: .milliseconds(225))
+            // Swap bug and tile color at apex
+            currentBugIndex = (currentBugIndex + 1) % bugRoster.count
+            tileColor = tileColor == .white ? .black : .white
+
+            try? await Task.sleep(for: .milliseconds(225))
+            // Finish full flip
+            withAnimation(.easeInOut(duration: 0.45)) {
+                rotationY += 180
+                rotationX = 0
+            }
+
+            try? await Task.sleep(for: .milliseconds(450))
+            isFlipping = false
+        }
+    }
 
     private func startRotationLoop() {
-        Task { @MainActor in
-            while true {
-                try? await Task.sleep(for: .seconds(2.8))
-
-                // Perform a dynamic 360 degree flip
-                withAnimation(.easeInOut(duration: 0.9)) {
-                    rotationY += 180
-                    rotationX = 12 * sin(rotationY * .pi / 180)
-                }
-
-                try? await Task.sleep(for: .milliseconds(450))
-                // Swap bug and tile color at the 90° flip apex
-                currentBugIndex = (currentBugIndex + 1) % bugRoster.count
-                tileColor = tileColor == .white ? .black : .white
-
-                try? await Task.sleep(for: .milliseconds(450))
-                withAnimation(.easeInOut(duration: 0.9)) {
-                    rotationY += 180
-                    rotationX = 0
-                }
+        rotationTask?.cancel()
+        rotationTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(20))
+                guard !Task.isCancelled else { break }
+                flipToNextPiece()
             }
         }
     }
