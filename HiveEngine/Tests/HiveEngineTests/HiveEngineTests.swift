@@ -251,6 +251,70 @@ private struct SeededRNG: RandomNumberGenerator {
         let after = state.applying(.move(pieceID: 7, from: Hex(2, 0), to: Hex(-1, 0)))
         #expect(after.result == .win(.white))
     }
+
+    // MARK: - Per-Bug Drill Geometry
+
+    /// Spider drill: White Spider (id 3) at (-2,1) should have legal 3-step
+    /// slide destinations.
+    @Test func spiderDrillHasValidTargets() {
+        let b = board([
+            (Hex(0, 0), .queen, .white),    // id 0
+            (Hex(1, 0), .queen, .black),    // id 1
+            (Hex(0, 1), .ant, .black),      // id 2
+            (Hex(-2, 1), .spider, .white),  // id 3 — spider to move
+            (Hex(-1, 0), .ant, .white),     // id 4
+        ])
+        let state = GameState(board: b, current: .white,
+                              unplaced: [], movesMade: [.white: 3, .black: 2])
+        let dests = MoveGenerator.destinations(for: 3, in: state)
+        #expect(!dests.isEmpty, "Spider drill: spider at (-2,1) should have at least one 3-step destination")
+    }
+
+    /// Beetle drill: White Beetle (id 2) at (-1,0) should be able to climb
+    /// onto the adjacent Black Ant at (0,0).
+    @Test func beetleDrillCanClimb() {
+        let b = board([
+            (Hex(0, -1), .queen, .white),   // id 0
+            (Hex(1, -1), .queen, .black),   // id 1
+            (Hex(-1, 0), .beetle, .white),  // id 2 — beetle to move
+            (Hex(0, 0), .ant, .black),      // id 3 — piece to climb onto
+        ])
+        let state = GameState(board: b, current: .white,
+                              unplaced: [], movesMade: [.white: 2, .black: 2])
+        let dests = MoveGenerator.destinations(for: 2, in: state)
+        #expect(dests.contains(Hex(0, 0)), "Beetle drill: beetle at (-1,0) should be able to climb onto (0,0)")
+    }
+
+    /// Ladybug drill: White Ladybug (id 4) at (-2,1) should have
+    /// up-over-down destinations through the hive.
+    @Test func ladybugDrillHasValidTargets() {
+        let b = board([
+            (Hex(0, 0), .queen, .white),     // id 0
+            (Hex(1, 0), .queen, .black),     // id 1
+            (Hex(-1, 0), .ant, .white),      // id 2
+            (Hex(0, 1), .beetle, .black),    // id 3
+            (Hex(-2, 1), .ladybug, .white),  // id 4 — ladybug to move
+        ])
+        let state = GameState(board: b, current: .white,
+                              unplaced: [], movesMade: [.white: 3, .black: 2])
+        let dests = MoveGenerator.destinations(for: 4, in: state)
+        #expect(!dests.isEmpty, "Ladybug drill: ladybug at (-2,1) should have at least one up-over-down destination")
+    }
+
+    /// Mosquito drill: White Mosquito (id 3) at (-1,1) touches a White Ant,
+    /// so it should be able to slide like an ant.
+    @Test func mosquitoDrillCanCopyAnt() {
+        let b = board([
+            (Hex(0, 0), .queen, .white),       // id 0
+            (Hex(1, 0), .queen, .black),       // id 1
+            (Hex(0, 1), .ant, .white),         // id 2
+            (Hex(-1, 1), .mosquito, .white),   // id 3 — mosquito to move
+        ])
+        let state = GameState(board: b, current: .white,
+                              unplaced: [], movesMade: [.white: 3, .black: 1])
+        let dests = MoveGenerator.destinations(for: 3, in: state)
+        #expect(!dests.isEmpty, "Mosquito drill: mosquito at (-1,1) should copy ant and have slide destinations")
+    }
 }
 
 // MARK: - Mosquito (copies an adjacent tile's ability)

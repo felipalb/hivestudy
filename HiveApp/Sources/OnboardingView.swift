@@ -34,7 +34,7 @@ struct OnboardingOverlay: View {
             VStack(spacing: 12) {
                 HStack {
                     Spacer()
-                    Button("Skip") { onFinish(false) }
+                    Button("Pular") { onFinish(false) }
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(.secondary)
                         .opacity(page == pageCount - 1 ? 0 : 1)      // the last page has its own explicit choices
@@ -56,7 +56,7 @@ struct OnboardingOverlay: View {
                 .frame(height: 540)
 
                 if page < pageCount - 1 {
-                    bigButton("Next", filled: true) {
+                    bigButton("Próximo", filled: true) {
                         withAnimation(.easeInOut(duration: 0.2)) { page += 1 }
                     }
                 }
@@ -72,44 +72,45 @@ struct OnboardingOverlay: View {
 
     private var welcomePage: some View {
         pageBody(icon: "hexagon.fill",
-                 title: "Welcome to Hive",
-                 text: "Surround your opponent's Queen Bee before they surround yours. No board, no dice — just the tiles.")
+                 title: "Bem-vindo ao Hive",
+                 text: "Cerque a Rainha do oponente antes que ele cerque a sua. Sem tabuleiro, sem dados — apenas as peças.")
     }
 
     private var goalPage: some View {
         pageBody(icon: "target",
-                 title: "The Goal",
-                 text: "Completely surround your opponent's Queen Bee — all six sides covered by tiles of any colour. If both Queens are surrounded at once, it's a draw.")
+                 title: "O Objetivo",
+                 text: "Cerque completamente a Rainha do oponente — todos os seis lados cobertos por peças de qualquer cor. Se ambas as Rainhas forem cercadas ao mesmo tempo, é empate.")
     }
 
     private var turnsPage: some View {
         pageBody(icon: "arrow.triangle.2.circlepath",
-                 title: "Your Turn",
-                 text: "Each turn, place a new tile from your hand or move a tile already in play. New tiles must touch your own colour and never touch the opponent's (except the opening tiles).")
+                 title: "Seu Turno",
+                 text: "A cada turno, coloque uma nova peça da sua mão ou mova uma peça já em jogo. Novas peças devem tocar sua própria cor e nunca tocar a do oponente (exceto as peças iniciais).")
     }
 
     private var queenPage: some View {
         pageBody(icon: "crown.fill",
-                 title: "The Queen",
-                 text: "Your Queen must be placed by your fourth turn, and you can't move any tile until she's on the board.")
+                 title: "A Rainha",
+                 text: "Sua Rainha deve ser colocada até o quarto turno, e nenhuma peça pode ser movida até que ela esteja no tabuleiro.")
     }
 
     private var oneHivePage: some View {
         pageBody(icon: "link",
-                 title: "One Hive",
-                 text: "The hive must stay connected at all times. A tile that would split the hive when lifted cannot move. Tiles slide — they can't squeeze through a gap that's blocked on both sides.")
+                 title: "Uma Colmeia",
+                 text: "A colmeia deve permanecer conectada o tempo todo. Uma peça que dividiria a colmeia ao ser levantada não pode se mover. As peças deslizam — não podem passar por uma abertura bloqueada dos dois lados.")
     }
 
     private var tilesPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("The Tiles")
+                Text("As Peças")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                 ForEach(RulesView.bugs, id: \.0) { bug, text in
                     HStack(alignment: .top, spacing: 12) {
                         TileView(piece: Piece(id: -1, bug: bug, color: .white), size: 20)
                             .frame(width: 44, height: 44)
+                            .accessibilityHidden(true)   // the name beside it is read instead
                         VStack(alignment: .leading, spacing: 2) {
                             Text(bug.displayName)
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -130,19 +131,19 @@ struct OnboardingOverlay: View {
     private var tipsPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("A Few Tips")
+                Text("Algumas Dicas")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                 tip("clock.fill",
-                    "Don't rush your Queen out where she's easy to surround — but don't stall past turn four either.")
+                    "Não apresse sua Rainha para onde ela possa ser cercada facilmente — mas não adie além do quarto turno.")
                 tip("arrow.up.and.down.circle.fill",
-                    "A Beetle on top of a tile pins whatever's underneath it. Climb one onto a key defender to freeze it in place.")
+                    "Um Besouro no topo de uma peça imobiliza o que estiver abaixo. Suba um em um defensor chave para congelá-lo.")
                 tip("arrow.triangle.branch",
-                    "The Mosquito copies the move of any bug it touches — and once it climbs atop the hive, it can only move like a Beetle from then on.")
+                    "O Mosquito copia o movimento de qualquer inseto que tocar — e quando sobe na colmeia, só pode se mover como Besouro.")
                 tip("point.topleft.down.curvedto.point.bottomright.up",
-                    "The Ant can slide anywhere around the outside of the hive. It's your most flexible piece — often worth saving to finish a surround rather than spending early.")
+                    "A Formiga pode deslizar por qualquer lado externo da colmeia. É sua peça mais versátil — vale a pena guardar para finalizar um cerco.")
                 tip("hexagon",
-                    "Keep counting sides: watch your own Queen's open faces as closely as your opponent's.")
+                    "Continue contando os lados: observe os lados abertos da sua Rainha tanto quanto os da do oponente.")
             }
             .padding(.horizontal, 22)
             .padding(.top, 4)
@@ -156,19 +157,19 @@ struct OnboardingOverlay: View {
             Image(systemName: "flag.checkered")
                 .font(.system(size: 42, weight: .bold))
                 .foregroundStyle(HiveTheme.selection)
-            Text("Ready to Play")
+            Text("Pronto para Jogar")
                 .font(.system(size: 23, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
-            Text("Play a guided match against a very forgiving bot to try out what you've just learned, or jump straight into a real game.")
+            Text("Jogue uma partida guiada contra um bot bem indulgente para praticar o que acabou de aprender, ou entre direto em um jogo real.")
                 .font(.system(size: 15, weight: .medium, design: .rounded))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             VStack(spacing: 10) {
-                bigButton("Play Tutorial", filled: true) {
+                bigButton("Jogar Tutorial", filled: true) {
                     OnboardingState.hasSeenTutorial = true
                     onFinish(true)
                 }
-                bigButton("Start Playing", filled: false) {
+                bigButton("Começar a Jogar", filled: false) {
                     OnboardingState.hasSeenTutorial = true
                     onFinish(false)
                 }

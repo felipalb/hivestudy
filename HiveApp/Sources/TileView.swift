@@ -8,6 +8,12 @@ struct TileView: View {
     var selected: Bool = false
     var lastMoved: Bool = false
     var isBeetleTarget: Bool = false
+    /// Increments every time this tile's tap is rejected (e.g. an opponent's
+    /// piece) — each increment shakes the tile so the "no" is visible.
+    var rejectedSeq: Int? = nil
+
+    @State private var shakePhase: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var layout: HexLayout { HexLayout(size: size) }
 
@@ -25,7 +31,14 @@ struct TileView: View {
             emblem
         }
         .frame(width: layout.tileWidth, height: layout.tileHeight)
+        .modifier(ShakeEffect(animatableData: shakePhase))
         .contentShape(RegularHexagon())
+        .onChange(of: rejectedSeq) { oldValue, newValue in
+            guard let newValue, newValue != oldValue else { return }
+            withAnimation(.linear(duration: reduceMotion ? 0.12 : 0.36)) {
+                shakePhase += reduceMotion ? 0.5 : 3   // calm single nudge under Reduce Motion
+            }
+        }
     }
 
     @ViewBuilder private var ringOverlay: some View {
@@ -57,5 +70,16 @@ struct TileView: View {
         .foregroundStyle(HiveTheme.accent(piece.bug, on: piece.color))
         .shadow(color: .black.opacity(0.4), radius: 1, y: 0.5)
         .frame(maxWidth: layout.tileWidth * 0.92)
+    }
+}
+
+/// Horizontal shake for rejected taps. `animatableData` advances by the number
+/// of oscillations wanted (each integer step is one full left-right wiggle).
+struct ShakeEffect: GeometryEffect {
+    var animatableData: CGFloat
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        let translation = 5 * sin(animatableData * 2 * .pi)
+        return ProjectionTransform(CGAffineTransform(translationX: translation, y: 0))
     }
 }

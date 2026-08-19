@@ -27,11 +27,11 @@ struct GameMenuSheet: View {
                     setupSections
                 }
             }
-            .navigationTitle(game.hasStarted ? "Menu" : "New Game")
+            .navigationTitle(game.hasStarted ? "Menu" : "Novo Jogo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }.fontWeight(.semibold)
+                    Button("Pronto") { dismiss() }.fontWeight(.semibold)
                 }
             }
         }
@@ -45,8 +45,8 @@ struct GameMenuSheet: View {
     // MARK: Before the match begins
 
     @ViewBuilder private var setupSections: some View {
-        Section("Opponent") {
-            Picker("Mode", selection: $options.mode) {
+        Section("Oponente") {
+            Picker("Modo", selection: $options.mode) {
                 ForEach(GameOptions.Mode.allCases) { mode in
                     Text(mode.label).tag(mode)
                 }
@@ -54,25 +54,25 @@ struct GameMenuSheet: View {
             .pickerStyle(.segmented)
 
             if options.mode == .vsAI {
-                Picker("You play", selection: $options.humanColor) {
-                    Text("White (first)").tag(PlayerColor.white)
-                    Text("Black").tag(PlayerColor.black)
+                Picker("Você joga de", selection: $options.humanColor) {
+                    Text("Brancas (primeiro)").tag(PlayerColor.white)
+                    Text("Pretas").tag(PlayerColor.black)
                 }
-                Picker("Difficulty", selection: $options.difficulty) {
+                Picker("Dificuldade", selection: $options.difficulty) {
                     // megaEasy is a hidden tier reserved for "Play Tutorial" above.
                     ForEach(HiveAI.Difficulty.allCases.filter { $0 != .megaEasy }, id: \.self) { d in
-                        Text(d.rawValue.capitalized).tag(d)
+                        Text(d.displayLabel).tag(d)
                     }
                 }
             }
         }
 
         Section {
-            Toggle("Tournament opening", isOn: $options.tournamentOpening)
+            Toggle("Abertura de torneio", isOn: $options.tournamentOpening)
         } header: {
-            Text("Rules")
+            Text("Regras")
         } footer: {
-            Text("Tournament opening forbids placing the Queen Bee as your very first tile.")
+            Text("A abertura de torneio proibe colocar a Rainha como primeira peça.")
         }
     }
 
@@ -84,10 +84,10 @@ struct GameMenuSheet: View {
                 game.leaveMatch()
                 dismiss()
             } label: {
-                Label("Leave Match", systemImage: "flag.fill")
+                Label("Abandonar Partida", systemImage: "flag.fill")
             }
         } footer: {
-            Text("Ends the current game and lets you choose new settings.")
+            Text("Encerra o jogo atual e permite escolher novas configurações.")
         }
     }
 }
@@ -97,33 +97,34 @@ struct GameMenuSheet: View {
 struct RulesView: View {
     /// Shared with `OnboardingOverlay`'s "The Tiles" page.
     static let bugs: [(Bug, String)] = [
-        (.queen, "Moves one space. Lose when all six of its sides are covered."),
-        (.beetle, "Moves one space and can climb on top of the hive, pinning the tile beneath."),
-        (.grasshopper, "Jumps in a straight line over one or more tiles to the first empty cell."),
-        (.spider, "Moves exactly three spaces around the hive, never backtracking."),
-        (.ant, "Moves any number of spaces around the outside of the hive."),
-        (.mosquito, "Copies the move of any bug it touches. Atop the hive, it can only move like a Beetle."),
-        (.ladybug, "Moves exactly three spaces: two across the top of the hive, then one back down to an empty cell.")
+        (.queen, "Move um espaço. Perde quando todos os seis lados estão cobertos."),
+        (.beetle, "Move um espaço e pode subir no topo da colmeia, imobilizando a peça abaixo."),
+        (.grasshopper, "Pula em linha reta sobre uma ou mais peças até a primeira célula vazia."),
+        (.spider, "Move exatamente três espaços ao redor da colmeia, sem retroceder."),
+        (.ant, "Move qualquer número de espaços ao redor da colmeia."),
+        (.mosquito, "Copia o movimento de qualquer inseto que tocar. No topo da colmeia, só se move como Besouro."),
+        (.ladybug, "Move exatamente três espaços: dois pelo topo da colmeia, depois um de volta para uma célula vazia.")
     ]
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                section("Goal", "Completely surround your opponent's Queen Bee — all six sides covered by tiles of any colour. If both Queens are surrounded at once, it's a draw.")
+                section("Objetivo", "Cerque completamente a Rainha do oponente — todos os seis lados cobertos por peças de qualquer cor. Se ambas as Rainhas forem cercadas ao mesmo tempo, é empate.")
 
-                section("Turns", "Each turn, place a new tile from your hand or move a tile already in play. New tiles must touch your own colour and never touch the opponent's (except the opening tiles).")
+                section("Turnos", "A cada turno, coloque uma nova peça da sua mão ou mova uma peça já em jogo. Novas peças devem tocar sua própria cor e nunca tocar a do oponente (exceto as peças iniciais).")
 
-                section("The Queen", "Your Queen must be placed by your fourth turn, and you cannot move any tile until she is on the board.")
+                section("A Rainha", "Sua Rainha deve ser colocada até o quarto turno, e nenhuma peça pode ser movida até que ela esteja no tabuleiro.")
 
-                section("One Hive", "The hive must stay connected at all times. A tile that would split the hive when lifted cannot move. Tiles slide — they can't squeeze through a gap that's blocked on both sides.")
+                section("Uma Colmeia", "A colmeia deve permanecer conectada o tempo todo. Uma peça que dividiria a colmeia ao ser levantada não pode se mover. As peças deslizam — não podem passar por uma abertura bloqueada dos dois lados.")
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("The Tiles")
+                    Text("As Peças")
                         .font(.system(size: 20, weight: .heavy, design: .rounded))
                     ForEach(Self.bugs, id: \.0) { bug, text in
                         HStack(alignment: .top, spacing: 12) {
                             TileView(piece: Piece(id: -1, bug: bug, color: .white), size: 20)
                                 .frame(width: 44, height: 44)
+                                .accessibilityHidden(true)   // the name beside it is read instead
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(bug.displayName)
                                     .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -137,7 +138,7 @@ struct RulesView: View {
             }
             .padding(20)
         }
-        .navigationTitle("How to Play")
+        .navigationTitle("Como Jogar")
         .navigationBarTitleDisplayMode(.inline)
     }
 

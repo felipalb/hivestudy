@@ -18,6 +18,8 @@ struct HandTrayView: View {
     /// Press-and-hold on a chip asks the root to explain that bug's movement.
     var onInspectPiece: (Piece) -> Void = { _ in }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private let labelWidth: CGFloat = 42
     private let rowSpacing: CGFloat = 10
     private let chipSpacing: CGFloat = 6
@@ -39,7 +41,7 @@ struct HandTrayView: View {
             HStack(spacing: rowSpacing) {
                 label
                 if hand.isEmpty {
-                    Text("No tiles in hand")
+                    Text("Sem peças na mão")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -98,16 +100,71 @@ struct HandTrayView: View {
                     color: color,
                     count: entry.count,
                     selected: isSelected(entry.bug),
+                    hinted: isHinted(entry.bug),
                     enabled: isActive && isPlaceable(entry.bug),
-                    size: chipSize
+                    size: chipSize,
+                    isDragging: isDraggingThisChip(entry.bug)
                 )
                 .onTapGesture { game.selectHand(entry.bug, color) }
-                // Same press-and-hold-to-inspect gesture as the board tiles, so
-                // a hand chip (selected or not) reveals its movement rules too.
                 .onLongPressGesture(minimumDuration: 0.4) { inspect(entry.bug) }
+                .gesture(chipDragGesture(entry.bug))
+                .transition(chipTransition)
+                .accessibilityLabel(accessibilityLabel(for: entry))
+                .accessibilityAddTraits(isActive && isPlaceable(entry.bug) ? .isButton : [])
             }
         }
         .padding(.vertical, 2)
+        .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.7), value: hand.map(\.bug))
+    }
+
+    /// A drag that lifts a hand chip towards the board. Starts after a short
+    /// distance to distinguish from taps; fires `beginDrag` once, then
+    /// continuously updates the finger position so the ghost follows the finger.
+    private func chipDragGesture(_ bug: Bug) -> some Gesture {
+        DragGesture(minimumDistance: 12, coordinateSpace: .global)
+            .onChanged { value in
+                if !game.dragState.isDragging {
+                    guard isActive, isPlaceable(bug) else { return }
+                    game.beginDrag(.hand(bug, color))
+                }
+                game.dragState.fingerPosition = value.location
+            }
+            .onEnded { _ in
+                guard game.dragState.isDragging else { return }
+                if let hex = game.dragState.hoveredHex,
+                   game.dragState.validTargets.contains(hex) {
+                    game.commitDrag(to: hex)
+                } else {
+                    game.cancelDrag()
+                }
+            }
+    }
+
+    private func isDraggingThisChip(_ bug: Bug) -> Bool {
+        if case let .hand(b, c) = game.dragState.source, b == bug, c == color { return true }
+        return false
+    }
+
+    /// Chips pop in/out with a scale normally; a plain fade under Reduce Motion.
+    private var chipTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .asymmetric(
+                insertion: .scale(scale: 0.3).combined(with: .opacity),
+                removal: .scale(scale: 0.1).combined(with: .opacity)
+            )
+    }
+
+    /// True when the active hint wants to place this bug (only ever for the
+    /// tray whose colour is to move — hints are computed for the current player).
+    private func isHinted(_ bug: Bug) -> Bool {
+        color == game.current && game.hintHandBug == bug
+    }
+
+    private func accessibilityLabel(for entry: (bug: Bug, count: Int)) -> String {
+        let colorName = color == .white ? "brancas" : "pretas"
+        let count = entry.count == 1 ? "1 peça restante" : "\(entry.count) peças restantes"
+        return "\(entry.bug.displayName), \(colorName), \(count)"
     }
 
     /// Fire a firm tactile tick and hand a display-only piece up to the root,
@@ -154,7 +211,7 @@ struct HandTrayView: View {
                 .fill(HiveTheme.tileGradient(color))
                 .frame(width: 18, height: 18)
                 .overlay(Circle().stroke(HiveTheme.tileBorder(color), lineWidth: 1))
-            Text(color == .white ? "White" : "Black")
+            Text(color == .white ? "Brancas" : "Pretas")
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundStyle(.secondary)
         }
@@ -179,12 +236,20 @@ private struct HandChip: View {
     let color: PlayerColor
     let count: Int
     let selected: Bool
+    var hinted: Bool = false
     let enabled: Bool
     let size: CGFloat
+
+    /// True while this chip is being dragged — dims the source to show it's "lifted".
+    var isDragging: Bool = false
+
+    @State private var glow = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         TileView(piece: Piece(id: -1, bug: bug, color: color), size: size, selected: selected)
             .frame(width: size * sqrt(3) + 6, height: size * 2)
+            .overlay { hintGlow }
             .overlay(alignment: .topTrailing) {
                 if count > 1 {
                     Text("\(count)")
@@ -195,8 +260,31 @@ private struct HandChip: View {
                         .offset(x: 2, y: -2)
                 }
             }
-            .opacity(enabled ? 1 : 0.4)
+            .opacity(isDragging ? 0.3 : (enabled ? 1 : 0.4))
             .scaleEffect(selected ? 1.08 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selected)
+            .onChange(of: hinted) { _, isHinted in
+                guard isHinted, !reduceMotion else { glow = false; return }
+                withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                    glow = true
+                }
+            }
+            .onAppear {
+                guard hinted, !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                    glow = true
+                }
+            }
+    }
+
+    /// Golden pulsing outline when the active hint wants to place this bug.
+    @ViewBuilder private var hintGlow: some View {
+        if hinted {
+            RegularHexagon()
+                .stroke(HiveTheme.accent(.queen), lineWidth: 2.5)
+                .shadow(color: HiveTheme.accent(.queen).opacity(0.85), radius: glow ? 10 : 4)
+                .opacity(glow ? 1.0 : 0.6)
+                .allowsHitTesting(false)
+        }
     }
 }

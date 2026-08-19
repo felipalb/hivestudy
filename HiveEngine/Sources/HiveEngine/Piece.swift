@@ -37,14 +37,14 @@ public enum Bug: String, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .queen: return "Queen Bee"
-        case .beetle: return "Beetle"
-        case .grasshopper: return "Grasshopper"
-        case .spider: return "Spider"
-        case .ant: return "Soldier Ant"
+        case .queen: return "Rainha"
+        case .beetle: return "Besouro"
+        case .grasshopper: return "Gafanhoto"
+        case .spider: return "Aranha"
+        case .ant: return "Formiga Soldado"
         case .mosquito: return "Mosquito"
-        case .ladybug: return "Ladybug"
-        case .pillbug: return "Pillbug"
+        case .ladybug: return "Joaninha"
+        case .pillbug: return "Percevejo"
         }
     }
 
@@ -66,14 +66,14 @@ public enum Bug: String, Codable, Sendable, CaseIterable {
     /// name, not by initial). Concise enough to fit a hexagon at small sizes.
     public var tileName: String {
         switch self {
-        case .queen: return "Queen"
-        case .beetle: return "Beetle"
-        case .grasshopper: return "Grasshopper"
-        case .spider: return "Spider"
-        case .ant: return "Ant"
+        case .queen: return "Rainha"
+        case .beetle: return "Besouro"
+        case .grasshopper: return "Gafanhoto"
+        case .spider: return "Aranha"
+        case .ant: return "Formiga"
         case .mosquito: return "Mosquito"
-        case .ladybug: return "Ladybug"
-        case .pillbug: return "Pillbug"
+        case .ladybug: return "Joaninha"
+        case .pillbug: return "Percevejo"
         }
     }
 }

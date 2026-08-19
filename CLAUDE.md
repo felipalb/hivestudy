@@ -28,15 +28,19 @@ HiveEngine/Sources/HiveEngine/
 HiveApp/Sources/
   HiveApp.swift       @main App
   ContentView.swift   root screen, top bar, trays, overlays (onboarding, game over, resume)
-  BoardView.swift     zoomable/pannable board, camera controls, auto-fit
+  BoardView.swift     zoomable/pannable board, camera controls, auto-fit, drag targets/ghost
   TileView.swift      one hexagon tile (icon above name, tinted in the bug's accent)
   BugIcon.swift       hand-drawn Shape glyph per bug (see "Tile visuals")
   HandTrayView.swift  a player's remaining tiles (dynamically sized, see "Tile visuals")
+  DragState.swift     @Observable drag tracking (hand/board to target, ghost position)
+  MovementDiagramView.swift animated mini-board loop demonstrating bug movement
+  TutorialView.swift  guided tutorial overlay, step script, and per-bug movement drills
   NewGameSheet.swift  GameMenuSheet (setup / menu, incl. Play Tutorial) + RulesView (pushed)
   OnboardingView.swift first-launch tutorial overlay + OnboardingState flag
-  GameController.swift @Observable @MainActor owner of state, AI, persistence
+  GameController.swift @Observable @MainActor owner of state, AI, persistence, drag/drop
   GamePersistence.swift  SavedGame + UserDefaults cache
   Theme.swift         palette (reads asset-catalog colours) + per-bug accent
+  Haptics.swift       tactile feedback wrappers
 HiveApp/Resources/Assets.xcassets/
   Hive*.colorset      every app colour (see "Colours & assets")
 ```
@@ -174,23 +178,43 @@ pinch-to-zoom (`zoomGesture`, still present and unchanged). The board auto-fits
 the hive until the player pans/zooms (`userAdjusted`), and recenter re-enables
 auto-fit.
 
-### Press-and-hold to inspect a piece
+### Drag & drop interaction (coexists with tap selection)
+Players can place and move pieces either by tap-to-select → tap-target OR by
+**direct drag & drop**:
+- **From hand tray** (`HandTrayView`): `DragGesture(minimumDistance: 12)` lifts a
+  chip towards the board. The chip source dims (`opacity 0.3`), valid drop
+  targets illuminate with pulsing `TargetMarker`s on the board, and a floating
+  ghost tile (`dragGhostOverlay`) tracks the finger.
+- **From board** (`BoardView`): A `LongPressGesture(minimumDuration: 0.25)`
+  sequenced with a `DragGesture` picks up top tiles without conflicting with the
+  instant `panGesture`. The source tile dims, valid destinations highlight, and
+  hovered cells glow.
+- **State & Coordinate Space**: `DragState` (`@Observable`) lives on
+  `GameController`. Board coordinates are converted from global finger positions
+  via `globalToBoardHex` by inverting zoom, pan, and center offsets. Dropping
+  onto a valid target commits the move through the existing animation
+  pipeline; dropping elsewhere cancels cleanly.
+
+### Press-and-hold to inspect a piece + animated movement diagrams
 Long-pressing (`.onLongPressGesture`, 0.4s) opens `PieceMoveInfoOverlay` — a
-focused card explaining just that bug's movement. It works in **two** places
-with identical behaviour:
-- **On the board** (`BoardView`) — any tile on **top** of the hive.
-- **In the hand tray** (`HandTrayView`) — any chip; it hands up a display-only
-  `Piece(id: -1, …)` since a hand tile has no board identity.
+focused card explaining just that bug's movement with an **animated mini-board
+diagram** (`MovementDiagramView`):
+- **Mini-loop visualizer**: `MovementDiagramView` uses `TimelineView(.animation)`
+  and `Canvas` to loop a bug along its canonical pattern against a tiny 3–5 tile
+  cluster (e.g. Ant loops the perimeter, Spider walks exactly 3 steps,
+  Grasshopper jumps the line, Beetle climbs on top, Ladybug does up-over-down).
+  Under `accessibilityReduceMotion`, it pauses at a static keyframe.
+- It works in **two** places with identical behaviour:
+  - **On the board** (`BoardView`) — any tile on **top** of the hive.
+  - **In the hand tray** (`HandTrayView`) — any chip; it hands up a display-only
+    `Piece(id: -1, …)` since a hand tile has no board identity.
 
 Both fire a rigid haptic and hand the `Piece` up via an `onInspectPiece`
 closure. The overlay is hosted on the **root `ContentView`** (as
 `inspectedPiece`), like the other modal overlays, so its scrim sits above the
 hand trays. The blurb comes from `RulesView.bugs`, the *same* source the rules
-screen uses, so both stay in sync — add a tile's blurb there and it appears in
-both places. The gesture works on any tile (own or opponent's, selected or
-not), which is a superset of "hold the selected piece". Whenever the player has
-any piece picked up — a board tile *or* a hand chip
-(`GameController.isPieceSelected`) — a subtle "Hold to see piece movement"
+screen uses, so both stay in sync. Whenever the player has any piece picked up
+(`GameController.isPieceSelected`), a subtle "Hold to see piece movement"
 capsule (`ContentView.selectionHint`) appears just above the trays to teach the
 gesture.
 
@@ -240,18 +264,15 @@ button and the onboarding "Play Tutorial" choice) both present `TutorialView`
 (`TutorialView.swift`) — a full-screen overlay owned by `ContentView`
 (`showTutorial`), **not** a game against the AI. It's isolated from the live
 `GameController`: exiting just returns to whatever was on the board.
-- `TutorialController` runs a fixed script of 9 `TutorialStep`s built by
-  `TutorialScript`. A step either **narrates** (a "Next" button advances) or
-  demands one **constrained action** — place a named bug or move a named piece,
-  accepting only the highlighted cells. Each drill step loads its own small
-  self-contained position, so the lessons never depend on a real game's flow.
-- Interaction is gated: for a placement the hinted hand chip glows and only its
-  legal cells (`MoveGenerator.placementCells`) accept the tile; for a move only
-  the scripted piece is tappable and only the accepted targets take it. The
-  final drill hands White a Grasshopper that jumps into the last open side of
-  Black's Queen to **win** — its geometry is guarded by `TutorialScenarioTests`
-  in the engine suite, so a coordinate slip fails a test rather than shipping a
-  dead-end lesson. Completing an action auto-advances after a short beat.
+- `TutorialController` runs a scripted sequence of `TutorialStep`s built by
+  `TutorialScript`. Steps include foundational mechanics (placement adjacency,
+  turn-4 Queen forcing, general piece movement) followed by **dedicated
+  per-bug movement drills** (Spider's exact 3-step rule, Beetle's stack climb,
+  Ladybug's up-over-down path, Mosquito copying an adjacent Ant) and the final
+  Grasshopper win drill.
+- Each drill step loads its own small self-contained position with stable tile
+  IDs. Interaction is strictly gated to the relevant action. All drill
+  geometries are guarded by `TutorialScenarioTests` in the engine test suite.
 - Narration is **captions only** (a coach bubble), no audio, by design.
 - The board is rendered locally (its own `HexLayout` fit + `TileView`s +
   pulsing target markers), deliberately reusing `TileView`/`RegularHexagon` for
@@ -259,7 +280,8 @@ button and the onboarding "Play Tutorial" choice) both present `TutorialView`
 
 The last step offers **Play a Real Game** (`onPlayGame` → `game.newGame()`) or
 **Done** (`onExit`). To add/reorder lessons, edit `TutorialScript.build()`; if a
-move drill's piece id changes, keep `TutorialScript.antID`/`winnerID` in sync.
+move drill's piece id changes, keep the IDs in `TutorialScript` and
+`TutorialScenarioTests` in sync.
 
 ### Onboarding walkthrough
 First launch only (`OnboardingState.hasSeenTutorial`, a plain `UserDefaults`

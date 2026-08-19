@@ -26,6 +26,15 @@ public enum HiveAI {
         case megaEasy
         case easy, medium, hard
 
+        public var displayLabel: String {
+            switch self {
+            case .megaEasy: return "Muito Fácil"
+            case .easy: return "Fácil"
+            case .medium: return "Médio"
+            case .hard: return "Difícil"
+            }
+        }
+
         var searchDepth: Int {
             switch self {
             case .megaEasy: return 1

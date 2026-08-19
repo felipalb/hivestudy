@@ -161,48 +161,91 @@ private enum TutorialScript {
         let drill1 = placementDrill()
         let drill2 = queenDrill()
         let drill3 = moveDrill()
+        let drillSpider = spiderDrill()
+        let drillBeetle = beetleDrill()
+        let drillLadybug = ladybugDrill()
+        let drillMosquito = mosquitoDrill()
         let drill4 = winDrill()
 
         let placeCells1 = Set(MoveGenerator.placementCells(drill1))
         let placeCells2 = Set(MoveGenerator.placementCells(drill2))
         let antTargets = Set(MoveGenerator.destinations(for: antID, in: drill3))
+        let spiderTargets = Set(MoveGenerator.destinations(for: spiderDrillID, in: drillSpider))
+        let beetleTargets = Set(MoveGenerator.destinations(for: beetleDrillID, in: drillBeetle))
+        let ladybugTargets = Set(MoveGenerator.destinations(for: ladybugDrillID, in: drillLadybug))
+        let mosquitoTargets = Set(MoveGenerator.destinations(for: mosquitoDrillID, in: drillMosquito))
         let winCell = Hex(-1, 0)
 
         return [
+            // --- Core tutorial ---
             TutorialStep(
-                caption: "Welcome to Hive! You win by surrounding the enemy Queen Bee on all six sides. Let's learn by playing a few moves together — tap Next.",
+                caption: "Bem-vindo ao Hive! Você vence cercando a Rainha adversária em todos os seis lados. Vamos aprender jogando alguns movimentos — toque em Próximo.",
                 action: .narrate, board: drill1),
 
             TutorialStep(
-                caption: "Place a tile from your hand. New tiles must touch your own colour and never the enemy's. Tap the glowing Grasshopper, then a glowing space.",
+                caption: "Coloque uma peça da sua mão. Novas peças devem tocar sua própria cor e nunca a do oponente. Toque no Gafanhoto brilhante, depois em um espaço brilhante.",
                 action: .place(bug: .grasshopper, accept: placeCells1), board: drill1),
 
             TutorialStep(
-                caption: "Your Queen Bee must be on the board by your fourth turn — and you can't move any tile until she's out.",
+                caption: "Sua Rainha deve estar no tabuleiro até o quarto turno — e nenhuma peça pode ser movida até que ela esteja em jogo.",
                 action: .narrate, board: drill2),
 
             TutorialStep(
-                caption: "It's turn four and your Queen is still in hand, so she must go down now. Tap the glowing Queen, then a glowing space.",
+                caption: "É o quarto turno e sua Rainha ainda está na mão, então ela precisa ser colocada agora. Toque na Rainha brilhante, depois em um espaço brilhante.",
                 action: .place(bug: .queen, accept: placeCells2), board: drill2),
 
             TutorialStep(
-                caption: "With your Queen out, you can move tiles. The Soldier Ant slides freely around the outside of the hive.",
+                caption: "Com sua Rainha em jogo, você pode mover peças. A Formiga Soldado desliza livremente ao redor da colmeia.",
                 action: .narrate, board: drill3),
 
             TutorialStep(
-                caption: "Move your Ant. Tap it to pick it up, then slide it to a glowing space.",
+                caption: "Mova sua Formiga. Toque nela para pegá-la, depois deslize até um espaço brilhante.",
                 action: .move(pieceID: antID, from: Hex(-1, 0), accept: antTargets), board: drill3),
 
+            // --- Per-bug movement drills ---
             TutorialStep(
-                caption: "Now the finish. Black's Queen has just one open side left. A Grasshopper jumps in a straight line over other tiles — right into the gap.",
+                caption: "A Aranha move exatamente três espaços ao redor da colmeia — nem mais, nem menos. Leve a Aranha exatamente até o destino.",
+                action: .narrate, board: drillSpider),
+
+            TutorialStep(
+                caption: "Mova sua Aranha: toque nela, depois toque em um espaço brilhante (exatamente 3 passos ao redor).",
+                action: .move(pieceID: spiderDrillID, from: spiderDrillFrom, accept: spiderTargets), board: drillSpider),
+
+            TutorialStep(
+                caption: "O Besouro move apenas um espaço, mas pode subir no topo de outra peça, imobilizando-a. Suba seu Besouro em cima da peça adversária!",
+                action: .narrate, board: drillBeetle),
+
+            TutorialStep(
+                caption: "Mova seu Besouro para cima da peça adversária.",
+                action: .move(pieceID: beetleDrillID, from: beetleDrillFrom, accept: beetleTargets), board: drillBeetle),
+
+            TutorialStep(
+                caption: "A Joaninha move exatamente três espaços: sobe no topo da colmeia, cruza por cima de uma peça, depois desce para uma célula vazia. Leve-a para o outro lado!",
+                action: .narrate, board: drillLadybug),
+
+            TutorialStep(
+                caption: "Mova sua Joaninha: ela vai subir, cruzar e descer. Toque nela, depois no destino brilhante.",
+                action: .move(pieceID: ladybugDrillID, from: ladybugDrillFrom, accept: ladybugTargets), board: drillLadybug),
+
+            TutorialStep(
+                caption: "O Mosquito é especial: ele copia o movimento de qualquer inseto adjacente. Ao lado de uma Formiga, desliza como Formiga. Ao lado de um Gafanhoto, pula como Gafanhoto.",
+                action: .narrate, board: drillMosquito),
+
+            TutorialStep(
+                caption: "Mova seu Mosquito: ele toca uma Formiga, então pode deslizar livremente. Leve-o ao destino.",
+                action: .move(pieceID: mosquitoDrillID, from: mosquitoDrillFrom, accept: mosquitoTargets), board: drillMosquito),
+
+            // --- Win drill ---
+            TutorialStep(
+                caption: "Agora o final. A Rainha das Pretas tem apenas um lado aberto. O Gafanhoto pula em linha reta sobre outras peças — direto para a abertura.",
                 action: .narrate, board: drill4),
 
             TutorialStep(
-                caption: "Jump your Grasshopper into the glowing gap to cover the Queen's last side and win the game!",
+                caption: "Pule seu Gafanhoto na abertura brilhante para cobrir o último lado da Rainha e vencer!",
                 action: .move(pieceID: winnerID, from: Hex(2, 0), accept: [winCell]), board: drill4),
 
             TutorialStep(
-                caption: "That's the whole game — you surrounded the Queen and won! Place tiles, get your own Queen safe, and close off all six sides of theirs.",
+                caption: "É assim que se joga — você cercou a Rainha e venceu! Coloque peças, proteja sua própria Rainha e feche todos os seis lados da adversária.",
                 action: .narrate, board: nil, isFinal: true)
         ]
     }
@@ -210,6 +253,15 @@ private enum TutorialScript {
     // Stable ids referenced by the move steps.
     static let antID = 2
     static let winnerID = 7
+    // Per-bug drill IDs — each drill board assigns sequential IDs starting at 0.
+    static let spiderDrillID = 3
+    static let spiderDrillFrom = Hex(-2, 1)
+    static let beetleDrillID = 2
+    static let beetleDrillFrom = Hex(-1, 0)
+    static let ladybugDrillID = 4
+    static let ladybugDrillFrom = Hex(-2, 1)
+    static let mosquitoDrillID = 3
+    static let mosquitoDrillFrom = Hex(-1, 1)
 
     private static func make(_ tiles: [(Hex, Bug, PlayerColor)]) -> Board {
         var b = Board()
@@ -247,6 +299,77 @@ private enum TutorialScript {
         ])
         return GameState(board: b, current: .white,
                          unplaced: [], movesMade: [.white: 2, .black: 2])
+    }
+
+    // MARK: - Per-Bug Drills
+
+    /// Spider drill: White Spider (id 3) at (-2,1) must walk exactly 3 steps.
+    /// Board: a small L-shaped hive so the spider has a clear 3-step route.
+    ///   id 0: White Queen at (0,0)
+    ///   id 1: Black Queen at (1,0)
+    ///   id 2: Black Ant at (0,1)
+    ///   id 3: White Spider at (-2,1) — the piece to move
+    private static func spiderDrill() -> GameState {
+        let b = make([
+            (Hex(0, 0), .queen, .white),    // id 0
+            (Hex(1, 0), .queen, .black),    // id 1
+            (Hex(0, 1), .ant, .black),      // id 2
+            (Hex(-2, 1), .spider, .white),  // id 3 — spider to move
+            (Hex(-1, 0), .ant, .white),     // id 4
+        ])
+        return GameState(board: b, current: .white,
+                         unplaced: [], movesMade: [.white: 3, .black: 2])
+    }
+
+    /// Beetle drill: White Beetle (id 2) at (-1,0) climbs onto Black's piece at (0,0).
+    ///   id 0: White Queen at (0,-1)
+    ///   id 1: Black Queen at (1,-1)
+    ///   id 2: White Beetle at (-1,0) — the piece to move
+    ///   id 3: Black Ant at (0,0) — target to climb on
+    private static func beetleDrill() -> GameState {
+        let b = make([
+            (Hex(0, -1), .queen, .white),   // id 0
+            (Hex(1, -1), .queen, .black),   // id 1
+            (Hex(-1, 0), .beetle, .white),  // id 2 — beetle to move
+            (Hex(0, 0), .ant, .black),      // id 3 — piece to climb onto
+        ])
+        return GameState(board: b, current: .white,
+                         unplaced: [], movesMade: [.white: 2, .black: 2])
+    }
+
+    /// Ladybug drill: White Ladybug (id 4) at (-2,1) does up-over-down across the hive.
+    ///   id 0: White Queen at (0,0)
+    ///   id 1: Black Queen at (1,0)
+    ///   id 2: White Ant at (-1, 0)
+    ///   id 3: Black Beetle at (0,1)
+    ///   id 4: White Ladybug at (-2,1) — the piece to move
+    private static func ladybugDrill() -> GameState {
+        let b = make([
+            (Hex(0, 0), .queen, .white),     // id 0
+            (Hex(1, 0), .queen, .black),     // id 1
+            (Hex(-1, 0), .ant, .white),      // id 2
+            (Hex(0, 1), .beetle, .black),    // id 3
+            (Hex(-2, 1), .ladybug, .white),  // id 4 — ladybug to move
+        ])
+        return GameState(board: b, current: .white,
+                         unplaced: [], movesMade: [.white: 3, .black: 2])
+    }
+
+    /// Mosquito drill: White Mosquito (id 3) at (-1,1) touches a White Ant,
+    /// so it can slide like an ant.
+    ///   id 0: White Queen at (0,0)
+    ///   id 1: Black Queen at (1,0)
+    ///   id 2: White Ant at (0,1)
+    ///   id 3: White Mosquito at (-1,1) — the piece to move
+    private static func mosquitoDrill() -> GameState {
+        let b = make([
+            (Hex(0, 0), .queen, .white),       // id 0
+            (Hex(1, 0), .queen, .black),       // id 1
+            (Hex(0, 1), .ant, .white),         // id 2
+            (Hex(-1, 1), .mosquito, .white),   // id 3 — mosquito to move
+        ])
+        return GameState(board: b, current: .white,
+                         unplaced: [], movesMade: [.white: 3, .black: 1])
     }
 
     /// Black's Queen surrounded on five sides; White's Grasshopper (id 7) can
@@ -302,7 +425,7 @@ struct TutorialView: View {
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
             Spacer()
-            Text("Step \(controller.stepNumber) of \(controller.stepCount)")
+            Text("Passo \(controller.stepNumber) de \(controller.stepCount)")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(.secondary)
             Spacer()
@@ -415,7 +538,7 @@ struct TutorialView: View {
                     }
                 }
                 .onTapGesture { controller.tapHand(bug) }
-            Text(controller.selection == .hand(bug) ? "Now tap a glowing space" : "Tap to pick up")
+            Text(controller.selection == .hand(bug) ? "Agora toque em um espaço brilhante" : "Toque para pegar")
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(.secondary)
         }
@@ -448,12 +571,12 @@ struct TutorialView: View {
     @ViewBuilder private var controls: some View {
         if step.isFinal {
             VStack(spacing: 10) {
-                bigButton("Play a Real Game", filled: true, action: onPlayGame)
-                bigButton("Done", filled: false, action: onExit)
+                bigButton("Jogar de Verdade", filled: true, action: onPlayGame)
+                bigButton("Concluir", filled: false, action: onExit)
             }
             .frame(maxWidth: 460)
         } else if case .narrate = step.action {
-            bigButton("Next", filled: true) { controller.next() }
+            bigButton("Próximo", filled: true) { controller.next() }
                 .frame(maxWidth: 460)
         }
         // Action steps have no button — completing the action advances.

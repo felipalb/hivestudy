@@ -136,4 +136,167 @@ public enum MoveGenerator {
             return [] // pillbug movement not yet implemented
         }
     }
+
+    // MARK: Path reconstruction (for move animation)
+
+    /// Reconstructs the route a legal move takes, so the app can animate the
+    /// tile the way its bug actually travels. Returns `nil` for placements,
+    /// passes, or if the move does not match the position (stale input).
+    ///
+    /// The reconstruction mirrors `destinations(forTopOf:)` bug by bug, using
+    /// the same `Rules` primitives against the same lifted board, so a path is
+    /// found for every move `destinations` would allow.
+    public static func path(of move: Move, in state: GameState) -> MovePath? {
+        guard case let .move(pieceID, from, to) = move,
+              state.result == .ongoing,
+              let piece = state.board.topPiece(from),
+              piece.id == pieceID
+        else { return nil }
+
+        var lifted = state.board
+        lifted.pop(at: from)
+        guard !lifted.isEmpty else { return nil }
+
+        switch piece.bug {
+        case .queen:
+            return groundSlidePath(on: lifted, from: from, to: to, steps: 1)
+        case .ant:
+            return shortestGroundSlidePath(on: lifted, from: from, to: to)
+        case .spider:
+            return groundSlidePath(on: lifted, from: from, to: to, steps: 3)
+        case .grasshopper:
+            return grasshopperPath(on: lifted, from: from, to: to)
+        case .beetle:
+            return beetlePath(on: lifted, from: from, to: to)
+        case .ladybug:
+            return ladybugPath(on: lifted, from: from, to: to)
+        case .mosquito:
+            return mosquitoPath(on: lifted, from: from, to: to)
+        case .pillbug:
+            return nil
+        }
+    }
+
+    /// A ground slide of exactly `steps` steps ending at `to`, without ever
+    /// revisiting a cell (Queen walks 1, Spider walks 3).
+    private static func groundSlidePath(on board: Board, from: Hex, to: Hex, steps: Int) -> MovePath? {
+        var route: [Hex] = [from]
+        var found: [Hex]?
+
+        func walk(_ hex: Hex, depth: Int) {
+            if found != nil { return }
+            if depth == steps {
+                if hex == to { found = route }
+                return
+            }
+            for next in Rules.groundSlideSteps(on: board, from: hex) where !route.contains(next) {
+                route.append(next)
+                walk(next, depth: depth + 1)
+                route.removeLast()
+            }
+        }
+
+        walk(from, depth: 0)
+        guard let hexes = found else { return nil }
+        return MovePath(kind: .slide, steps: hexes.map { MovePath.Step(hex: $0, level: 0) })
+    }
+
+    /// The shortest slide route around the hive from `from` to `to` (the Ant).
+    /// Breadth-first with parent pointers; every hop respects the same
+    /// freedom-to-move gate as `Rules.groundSlideSteps`.
+    private static func shortestGroundSlidePath(on board: Board, from: Hex, to: Hex) -> MovePath? {
+        var parent: [Hex: Hex] = [from: from]
+        var queue: [Hex] = [from]
+        var head = 0
+        while head < queue.count {
+            let hex = queue[head]
+            head += 1
+            if hex == to { break }
+            for next in Rules.groundSlideSteps(on: board, from: hex) where parent[next] == nil {
+                parent[next] = hex
+                queue.append(next)
+            }
+        }
+        guard parent[to] != nil else { return nil }
+        var hexes: [Hex] = [to]
+        while let last = hexes.last, last != from {
+            hexes.append(parent[last]!)
+        }
+        hexes.reverse()
+        return MovePath(kind: .slide, steps: hexes.map { MovePath.Step(hex: $0, level: 0) })
+    }
+
+    /// The straight ray from `from` over the contiguous run of tiles to the
+    /// landing cell `to` (the Grasshopper). Intermediates carry the level of
+    /// the tile being overflown so the UI can highlight them during the arc.
+    private static func grasshopperPath(on board: Board, from: Hex, to: Hex) -> MovePath? {
+        for direction in 0..<6 {
+            var cursor = from.neighbor(direction)
+            guard board.isOccupied(cursor) else { continue }
+            var overflown: [Hex] = []
+            while board.isOccupied(cursor) {
+                overflown.append(cursor)
+                cursor = cursor.neighbor(direction)
+            }
+            guard cursor == to else { continue }
+            var steps = [MovePath.Step(hex: from, level: 0)]
+            steps += overflown.map { MovePath.Step(hex: $0, level: board.height($0) - 1) }
+            steps.append(MovePath.Step(hex: to, level: 0))
+            return MovePath(kind: .jump, steps: steps)
+        }
+        return nil
+    }
+
+    /// One step with explicit stack levels at both ends (the Beetle): climbing
+    /// up raises `level`, dropping to empty ground returns it to zero.
+    private static func beetlePath(on board: Board, from: Hex, to: Hex) -> MovePath? {
+        guard from.isAdjacent(to: to) else { return nil }
+        return MovePath(kind: .climb, steps: [
+            MovePath.Step(hex: from, level: board.height(from)),
+            MovePath.Step(hex: to, level: board.height(to)),
+        ])
+    }
+
+    /// Up onto a tile, across one more tile along the roof, down to the empty
+    /// ground beyond (the Ladybug). Mirrors `Rules.ladybugDestinations`.
+    private static func ladybugPath(on board: Board, from: Hex, to: Hex) -> MovePath? {
+        guard to != from else { return nil }
+        for up in board.occupiedNeighbors(from) {
+            for over in board.occupiedNeighbors(up) where over != up {
+                guard board.emptyNeighbors(over).contains(to) else { continue }
+                return MovePath(kind: .overTheTop, steps: [
+                    MovePath.Step(hex: from, level: 0),
+                    MovePath.Step(hex: up, level: board.height(up)),
+                    MovePath.Step(hex: over, level: board.height(over)),
+                    MovePath.Step(hex: to, level: 0),
+                ])
+            }
+        }
+        return nil
+    }
+
+    /// The Mosquito travels like whichever bug it is copying. From atop the
+    /// hive it is stuck copying the Beetle (see `destinations`); on the ground
+    /// it tries each adjacent bug's route in a fixed order until one reaches
+    /// `to` — the same union `Rules.mosquitoGroundDestinations` builds.
+    private static func mosquitoPath(on board: Board, from: Hex, to: Hex) -> MovePath? {
+        if board.height(from) > 0 {
+            return beetlePath(on: board, from: from, to: to)
+        }
+        let neighborBugs = Set(from.neighbors.compactMap { board.topPiece($0)?.bug }).subtracting([.mosquito])
+        for bug in [Bug.queen, .ant, .spider, .grasshopper, .beetle, .ladybug] where neighborBugs.contains(bug) {
+            let candidate: MovePath?
+            switch bug {
+            case .queen: candidate = groundSlidePath(on: board, from: from, to: to, steps: 1)
+            case .ant: candidate = shortestGroundSlidePath(on: board, from: from, to: to)
+            case .spider: candidate = groundSlidePath(on: board, from: from, to: to, steps: 3)
+            case .grasshopper: candidate = grasshopperPath(on: board, from: from, to: to)
+            case .beetle: candidate = beetlePath(on: board, from: from, to: to)
+            case .ladybug: candidate = ladybugPath(on: board, from: from, to: to)
+            default: candidate = nil
+            }
+            if let candidate { return candidate }
+        }
+        return nil
+    }
 }
