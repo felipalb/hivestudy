@@ -26,7 +26,22 @@ struct GameOptions: Equatable, Codable {
         var id: String { rawValue }
         var label: String { self == .vsAI ? "Vs. Computador" : "Dois Jogadores" }
     }
+    enum ColorChoice: String, CaseIterable, Identifiable, Codable {
+        case random = "random"
+        case white = "white"
+        case black = "black"
+
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .random: return "Sorteio 🎲"
+            case .white: return "Brancas (primeiro)"
+            case .black: return "Pretas"
+            }
+        }
+    }
     var mode: Mode = .vsAI
+    var colorChoice: ColorChoice = .random
     var humanColor: PlayerColor = .white          // in vs-AI, the side the human plays
     var difficulty: HiveAI.Difficulty = .medium
     var tournamentOpening: Bool = false
@@ -38,6 +53,7 @@ struct GameOptions: Equatable, Codable {
     static var tutorial: GameOptions {
         var options = GameOptions()
         options.mode = .vsAI
+        options.colorChoice = .white
         options.humanColor = .white
         options.difficulty = .megaEasy
         return options
@@ -60,6 +76,10 @@ final class GameController {
     /// held back until the player decides.
     private(set) var pendingResume: SavedGame?
 
+    /// When non-nil, shows the ColorDrawOverlay animation revealing which side
+    /// the human was assigned for this match.
+    private(set) var pendingColorDraw: PlayerColor? = nil
+
     /// What the player currently has "picked up".
     enum Selection: Equatable {
         case none
@@ -73,6 +93,11 @@ final class GameController {
     /// so the two input modes coexist: starting a drag clears the tap selection
     /// and vice versa.
     let dragState = DragState()
+    var recenterTrigger: Int = 0
+
+    func recenterBoard() {
+        recenterTrigger += 1
+    }
 
     // MARK: - Animation State
     var animationPhase: AnimationPhase = .none
@@ -157,8 +182,12 @@ final class GameController {
     }
 
     init(options: GameOptions = GameOptions()) {
-        self.options = options
-        self.state = GameState(config: Self.config(for: options))
+        var opts = options
+        if opts.mode == .vsAI && opts.colorChoice == .random {
+            opts.humanColor = Bool.random() ? .white : .black
+        }
+        self.options = opts
+        self.state = GameState(config: Self.config(for: opts))
 
         if ProcessInfo.processInfo.environment["HIVE_DEMO"] == "1" {
             loadDemo()
@@ -172,8 +201,6 @@ final class GameController {
             pendingResume = saved
             return
         }
-
-        scheduleAIIfNeeded()
     }
 
     /// Seeds an illustrative mid-game position with a piece pre-selected, used
@@ -217,20 +244,45 @@ final class GameController {
 
     var statusText: String {
         switch state.result {
-        case .win(let c): return "\(c == .white ? "Brancas" : "Pretas") vencem!"
+        case .win(let c):
+            if options.mode == .vsAI {
+                return c == options.humanColor ? "Você venceu! 🎉" : "Oponente venceu!"
+            }
+            return "\(c == .white ? "Brancas" : "Pretas") vencem!"
         case .draw: return "Empate"
         case .ongoing:
             if isThinking { return "Computador pensando…" }
-            let who = current == .white ? "Brancas" : "Pretas"
-            if state.mustPlaceQueen { return "\(who): posicione sua Rainha" }
-            return "Vez de \(who)"
+            if options.mode == .vsAI {
+                if current == options.humanColor {
+                    if state.mustPlaceQueen { return "Sua vez: posicione sua Rainha" }
+                    return "Sua vez"
+                } else {
+                    return "Vez do oponente"
+                }
+            } else {
+                let who = current == .white ? "Brancas" : "Pretas"
+                if state.mustPlaceQueen { return "\(who): posicione sua Rainha" }
+                return "Vez das \(who)"
+            }
         }
     }
 
     // MARK: New game / undo
 
-    func newGame(options: GameOptions? = nil) {
+    func newGame(options: GameOptions? = nil, showDrawAnimation: Bool = true) {
         if let options { self.options = options }
+
+        if self.options.mode == .vsAI {
+            switch self.options.colorChoice {
+            case .random:
+                self.options.humanColor = Bool.random() ? .white : .black
+            case .white:
+                self.options.humanColor = .white
+            case .black:
+                self.options.humanColor = .black
+            }
+        }
+
         state = GameState(config: Self.config(for: self.options))
         history.removeAll()
         selection = .none
@@ -244,6 +296,18 @@ final class GameController {
         rejection = nil
         didCoachTargetTap = false
         GamePersistence.clear()
+
+        if showDrawAnimation && self.options.mode == .vsAI {
+            pendingColorDraw = self.options.humanColor
+        } else {
+            pendingColorDraw = nil
+            scheduleAIIfNeeded()
+        }
+    }
+
+    /// Called when the ColorDrawOverlay finishes or is dismissed by the player.
+    func completeColorDraw() {
+        pendingColorDraw = nil
         scheduleAIIfNeeded()
     }
 
@@ -313,6 +377,8 @@ final class GameController {
                 message = "Essas peças são do computador"
             } else if isThinking {
                 message = "Aguarde: o computador está jogando"
+            } else if options.mode == .vsAI {
+                message = current == options.humanColor ? "Agora é a sua vez" : "Aguarde a vez do oponente"
             } else {
                 message = "Agora é a vez das \(current == .white ? "Brancas" : "Pretas")"
             }

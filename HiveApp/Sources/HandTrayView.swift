@@ -5,13 +5,11 @@ import HiveEngine
 import UIKit
 #endif
 
-/// A player's remaining tiles, tappable to pick one for placement.
+/// A player's remaining tiles, displayed in a spacious two-tier layout:
+/// - Top row: Queen, Spider, Beetle
+/// - Bottom row: Grasshopper, Ant, Mosquito, Ladybug (starting from Grasshopper)
 ///
-/// Tile size is computed from the available width (not fixed) so tiles read as
-/// large as the screen allows — big enough that all six bug types fit in one
-/// row without scrolling on most iPhones, while never shrinking below
-/// `minChipSize`. On the narrowest phones that floor can force the row back
-/// into a horizontal scroll; the `ScrollView` below is the fallback for that.
+/// Enlarged pieces with zero scrolling for maximum legibility and comfort.
 struct HandTrayView: View {
     let game: GameController
     let color: PlayerColor
@@ -20,13 +18,9 @@ struct HandTrayView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let labelWidth: CGFloat = 42
-    private let rowSpacing: CGFloat = 10
-    private let chipSpacing: CGFloat = 6
-    private let minChipSize: CGFloat = 30
-    private let maxChipSize: CGFloat = 44
-    private let edgeFadeWidth: CGFloat = 14
-    private let scrollEndInset: CGFloat = 16   // ≥ edgeFadeWidth so the first/last chip clears the fade
+    private let chipSize: CGFloat = 34
+    private let chipSpacing: CGFloat = 8
+    private let rowSpacing: CGFloat = 6
 
     private var isActive: Bool {
         game.current == color && game.result == .ongoing && game.humanControls(color) && !game.isThinking
@@ -34,67 +28,54 @@ struct HandTrayView: View {
 
     private var hand: [(bug: Bug, count: Int)] { game.state.hand(color) }
 
+    private var topRowBugs: [(bug: Bug, count: Int)] {
+        let topTypes: Set<Bug> = [.queen, .spider, .beetle]
+        return hand.filter { topTypes.contains($0.bug) }
+    }
+
+    private var bottomRowBugs: [(bug: Bug, count: Int)] {
+        let topTypes: Set<Bug> = [.queen, .spider, .beetle]
+        return hand.filter { !topTypes.contains($0.bug) }
+    }
+
     var body: some View {
-        GeometryReader { geo in
-            let raw = rawChipSize(for: geo.size.width)
-            let chipSize = min(maxChipSize, max(minChipSize, raw))
-            HStack(spacing: rowSpacing) {
-                label
-                if hand.isEmpty {
-                    Text("Sem peças na mão")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else if raw < minChipSize {
-                    // Cramped width: the row can't fit even at the minimum chip
-                    // size, so it scrolls (e.g. a 6-type hand with the Mosquito).
-                    // Chips stay comfortably sized, so two things keep the scroll
-                    // from looking broken:
-                    //   • end-insets give the first/last chip slack so a
-                    //     *selected* chip's 1.08 scale, selection ring and count
-                    //     badge are never hard-clipped at the viewport edge when
-                    //     scrolled to either end; the vertical slack likewise
-                    //     keeps the overhanging top badge from being cut off.
-                    //   • `edgeFade` masks the ScrollView so its horizontal clip
-                    //     reads as a soft fade instead of a broken border, and
-                    //     signals that more tiles (the Mosquito) lie off-screen.
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        chipRow(chipSize)
-                            .padding(.horizontal, scrollEndInset)
-                            .padding(.vertical, 6)
+        Group {
+            if hand.isEmpty {
+                Text("Sem peças na mão")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 24)
+            } else {
+                VStack(spacing: rowSpacing) {
+                    if !topRowBugs.isEmpty {
+                        chipRow(topRowBugs)
                     }
-                    .mask(edgeFade)
-                } else {
-                    // Everything fits: render the row directly with no
-                    // ScrollView. A ScrollView clips its content to its bounds,
-                    // which cropped the edges of a *selected* chip (its 1.08
-                    // scale, selection ring, and count badge). A plain HStack has
-                    // no clip, so the whole chip stays visible.
-                    chipRow(chipSize)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if !bottomRowBugs.isEmpty {
+                        chipRow(bottomRowBugs)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .center)
             }
         }
-        .frame(height: maxChipSize * 2 + 6)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(isActive ? HiveTheme.selection.opacity(0.8) : .white.opacity(0.08),
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(isActive ? HiveTheme.selection.opacity(0.85) : .white.opacity(0.08),
                                 lineWidth: isActive ? 2 : 1)
                 )
         )
         .animation(.easeInOut(duration: 0.2), value: isActive)
     }
 
-    /// One tappable row of hand chips. Shared by the fits-in-one-row and the
-    /// cramped-scroll branches so both stay identical bar the container.
-    private func chipRow(_ chipSize: CGFloat) -> some View {
+    /// One tappable row of hand chips.
+    private func chipRow(_ bugs: [(bug: Bug, count: Int)]) -> some View {
         HStack(spacing: chipSpacing) {
-            ForEach(hand, id: \.bug) { entry in
+            ForEach(bugs, id: \.bug) { entry in
                 HandChip(
                     bug: entry.bug,
                     color: color,
@@ -113,8 +94,7 @@ struct HandTrayView: View {
                 .accessibilityAddTraits(isActive && isPlaceable(entry.bug) ? .isButton : [])
             }
         }
-        .padding(.vertical, 2)
-        .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.7), value: hand.map(\.bug))
+        .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.7), value: bugs.map(\.bug))
     }
 
     /// A drag that lifts a hand chip towards the board. Starts after a short
@@ -145,7 +125,6 @@ struct HandTrayView: View {
         return false
     }
 
-    /// Chips pop in/out with a scale normally; a plain fade under Reduce Motion.
     private var chipTransition: AnyTransition {
         reduceMotion
             ? .opacity
@@ -155,8 +134,6 @@ struct HandTrayView: View {
             )
     }
 
-    /// True when the active hint wants to place this bug (only ever for the
-    /// tray whose colour is to move — hints are computed for the current player).
     private func isHinted(_ bug: Bug) -> Bool {
         color == game.current && game.hintHandBug == bug
     }
@@ -167,8 +144,6 @@ struct HandTrayView: View {
         return "\(entry.bug.displayName), \(colorName), \(count)"
     }
 
-    /// Fire a firm tactile tick and hand a display-only piece up to the root,
-    /// which presents the movement-explanation modal.
     private func inspect(_ bug: Bug) {
         #if canImport(UIKit)
         UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
@@ -176,51 +151,8 @@ struct HandTrayView: View {
         onInspectPiece(Piece(id: -1, bug: bug, color: color))
     }
 
-    /// A soft fade at the leading/trailing edges of the scrolling tray. Used as
-    /// the ScrollView's mask: the hard clip lands where alpha is ~0, so a chip
-    /// sliding under an edge fades out instead of showing a broken border, and
-    /// the fade doubles as an affordance that more tiles are off-screen. The
-    /// edges are a fixed width (not a fraction of the row) so the fade looks
-    /// identical on any tray width; the opaque black middle leaves every other
-    /// chip fully visible.
-    private var edgeFade: some View {
-        HStack(spacing: 0) {
-            LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
-                .frame(width: edgeFadeWidth)
-            Color.black
-            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                .frame(width: edgeFadeWidth)
-        }
-    }
-
-    /// The chip size that would fit every hand tile across `totalWidth` in one
-    /// row, **before** clamping. When it's below `minChipSize` the tiles can't
-    /// fit and the row falls back to a horizontal scroll; otherwise the caller
-    /// clamps it into `[minChipSize, maxChipSize]` and shows it without scrolling.
-    private func rawChipSize(for totalWidth: CGFloat) -> CGFloat {
-        guard !hand.isEmpty else { return minChipSize }
-        let count = CGFloat(hand.count)
-        let available = totalWidth - labelWidth - rowSpacing - chipSpacing * (count - 1)
-        let perChipFrameWidth = available / count
-        return (perChipFrameWidth - 6) / CGFloat(3).squareRoot()   // HandChip frame width = size*sqrt(3) + 6
-    }
-
-    private var label: some View {
-        VStack(spacing: 2) {
-            Circle()
-                .fill(HiveTheme.tileGradient(color))
-                .frame(width: 18, height: 18)
-                .overlay(Circle().stroke(HiveTheme.tileBorder(color), lineWidth: 1))
-            Text(color == .white ? "Brancas" : "Pretas")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(.secondary)
-        }
-        .frame(width: labelWidth)
-    }
-
     private func isSelected(_ bug: Bug) -> Bool {
         if case let .hand(b, c) = game.selection { return b == bug && c == color }
-        _ = color
         return false
     }
 
@@ -253,11 +185,12 @@ private struct HandChip: View {
             .overlay(alignment: .topTrailing) {
                 if count > 1 {
                     Text("\(count)")
-                        .font(.system(size: max(10, size * 0.38), weight: .heavy, design: .rounded))
+                        .font(.system(size: max(11, size * 0.36), weight: .heavy, design: .rounded))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 5).padding(.vertical, 1)
-                        .background(Capsule().fill(.black.opacity(0.7)))
-                        .offset(x: 2, y: -2)
+                        .padding(.horizontal, 5).padding(.vertical, 1.5)
+                        .background(Capsule().fill(.black.opacity(0.8)))
+                        .overlay(Capsule().stroke(HiveTheme.selection.opacity(0.5), lineWidth: 1))
+                        .offset(x: 4, y: -2)
                 }
             }
             .opacity(isDragging ? 0.3 : (enabled ? 1 : 0.4))

@@ -27,7 +27,8 @@ HiveEngine/Sources/HiveEngine/
 
 HiveApp/Sources/
   HiveApp.swift       @main App
-  ContentView.swift   root screen, top bar, trays, overlays (onboarding, game over, resume)
+  ContentView.swift   app router (Home vs Game), top bar, overlays
+  HomeView.swift      hero home screen with 3D showcase, CTA buttons & online placeholder
   BoardView.swift     zoomable/pannable board, camera controls, auto-fit, drag targets/ghost
   TileView.swift      one hexagon tile (icon above name, tinted in the bug's accent)
   BugIcon.swift       hand-drawn Shape glyph per bug (see "Tile visuals")
@@ -35,6 +36,7 @@ HiveApp/Sources/
   DragState.swift     @Observable drag tracking (hand/board to target, ghost position)
   MovementDiagramView.swift animated mini-board loop demonstrating bug movement
   TutorialView.swift  guided tutorial overlay, step script, and per-bug movement drills
+  ColorDrawOverlay.swift 3D coin-flip / tile-spin animation for random side assignment
   NewGameSheet.swift  GameMenuSheet (setup / menu, incl. Play Tutorial) + RulesView (pushed)
   OnboardingView.swift first-launch tutorial overlay + OnboardingState flag
   GameController.swift @Observable @MainActor owner of state, AI, persistence, drag/drop
@@ -130,53 +132,72 @@ tile-colour-aware accent). Add a matching `.colorset` if you add a colour.
 black pieces should read as **actually black**, not the dark navy-gray they
 used to be.
 
-### Hand tray sizing (dynamic, not fixed)
-`HandTrayView` computes each chip's size from the available row width
-(`rawChipSize(for:)` inside a `GeometryReader`) rather than using a fixed
-constant, so tiles are as large as the screen allows. `maxChipSize` (44) caps
-how big chips get on spacious layouts (iPad, Pro Max, landscape). A hand with
-few remaining bug types fits in one row; a full **6-type** hand (base five +
-the always-on Mosquito) does **not** fit at a comfortable size on a phone —
-six 30pt hexagons plus the label need ~430pt but the tray only offers ~340pt —
-so that case scrolls (see the second branch below). Fitting all six in one row
-at ≥`minChipSize` is not physically possible on typical iPhones; don't chase it.
-- **Two rendering branches, and why.** When the raw (pre-clamp) size is
-  `>= minChipSize` (30) everything fits, so the row is a **plain `HStack`**
-  (`chipRow`) with **no scroll view**. This matters: a `ScrollView` **clips** its
-  content to its bounds, which used to crop the edges of a *selected* chip — its
-  `1.08` scale, selection ring, and the count badge that overhangs the top-right.
-  A plain `HStack` has nothing to clip against, so the whole selected chip stays
-  visible. Don't put the fits-case row back inside a scroll view.
-- **The scroll branch keeps chips comfy and fixes the clip.** When the raw size
-  drops below `minChipSize` (a 6-type hand on a phone) the row falls back to
-  `ScrollView(.horizontal)` with chips still at the `minChipSize` floor — *not*
-  shrunk to fit. Two things stop that scroll from looking broken: (1) the scroll
-  content carries a horizontal `scrollEndInset` (≥ `edgeFadeWidth`) plus vertical
-  slack, so the first/last chip — including a selected chip's scale, ring and
-  overhanging badge — is never hard-clipped when scrolled to an end; (2) the
-  ScrollView is masked by `edgeFade`, a fixed-width leading/trailing gradient, so
-  its horizontal clip reads as a **soft fade** (not a broken border) and signals
-  that more tiles, e.g. the Mosquito, are off-screen. This was a deliberate
-  product choice over shrinking every chip to cram six into one row.
+### Hand tray: 2-tier spacious layout (no scrolling)
+The UI displays only **one** hand tray at the bottom of the screen — the human
+player's hand (`game.options.humanColor` in `vsAI` mode, or the active player in
+`twoPlayer` mode). The opponent's tiles are hidden, freeing vertical space for the board.
+- **Enlarged pieces**: Chips are sized at a generous `chipSize: 34`, making bug
+  drawings and text large, crisp, and comfortable to tap or drag.
+- **Two-row organization**:
+  - **Top row**: Rainha, Aranha, Besouro (`.queen`, `.spider`, `.beetle`).
+  - **Bottom row**: Gafanhoto, Formiga, Mosquito, Joaninha (`.grasshopper`, `.ant`, `.mosquito`, `.ladybug`).
+- **Zero scroll**: All pieces are visible simultaneously in their rows with no
+  scrolling needed. If a row becomes empty as pieces are placed on the board,
+  the remaining row centers smoothly.
 
-### Camera controls
-`BoardView.cameraControls` is a vertical stack docked at the **mid-right edge**
-(`.overlay(alignment: .trailing)`) — deliberately *not* bottom-trailing, where
-it used to overlap the hand trays. Three icon-only buttons, top to bottom:
-- **Play Tutorial** (`graduationcap.fill`) → calls the injected `onStartTutorial`
-  closure, which flips `ContentView.showTutorial` to present the guided
-  `TutorialView` overlay (see "The guided tutorial"). It does **not** start a
-  game — the tutorial is fully isolated from the live `GameController`.
-- **Recenter** (`scope`) → re-enables auto-fit (`userAdjusted = false; fit`).
-- **How to Play** (`book.fill`) → presents `RulesView` as a **sheet** (see
-  "Settings / menu sheet" for why this sheet is hosted on `BoardView`, not the
-  root, and wrapped in its own `NavigationStack`).
+### Status text: personal & readable
+In `vsAI` matches, status badges read **"Sua vez"** / **"Vez do oponente"** (or
+**"Computador pensando…"** while the AI calculates), rather than impersonal
+"Brancas / Pretas" labels. Win announcements read **"Você venceu! 🎉"** /
+**"Oponente venceu"**.
 
-Tutorial and How to Play live here rather than in the menu sheet. There used to
-be manual zoom-in/zoom-out buttons too; they were removed as redundant with
-pinch-to-zoom (`zoomGesture`, still present and unchanged). The board auto-fits
-the hive until the player pans/zooms (`userAdjusted`), and recenter re-enables
-auto-fit.
+### Random side assignment & 3D color draw animation
+When a new match begins (or when clicking "Novo Jogo" / "Jogar Novamente"),
+the game randomly determines whether the player gets **White** (moves first) or
+**Black** (computer moves first) by default (`GameOptions.ColorChoice.random`):
+- **`ColorDrawOverlay`**: A 3D coin-toss / tile-spin animation featuring a large
+  hexagonal Queen tile rotating on its Y-axis with realistic physics
+  deceleration (`rotation3DEffect`, perspective 0.75).
+- Alternates between White (Gold) and Black (Yellow) faces during flight with
+  micro-haptic ticks on each half-turn.
+- Lands on the assigned color with a dynamic scale bounce, an expanding golden
+  shockwave ring, and `Haptics.success()`.
+- If Black is drawn, the AI starts calculating its opening move immediately once
+  the draw overlay dismisses.
+
+### Hero Home Screen (`HomeView.swift`) & App Navigation
+The initial app entry point is a dedicated, visually stunning **Home Screen**:
+- **3D Hexagon Showcase**: Centered towards the top, displaying a large 3D
+  hexagonal tile rotating with smooth Y/X perspective tilts (`Hero3DShowcase`).
+  - Seamlessly cycles through all 7 bugs in the game (`Queen`, `Spider`, `Beetle`,
+    `Grasshopper`, `Ant`, `Mosquito`, `Ladybug`), alternating tile color (White / Black).
+  - Ambient glowing halo and orbiting micro-particles dynamically shift to each
+    bug's signature accent color.
+  - Bug name badge dynamically highlights underneath.
+- **Top-left button**: Dedicated **"Configurações"** button (`gearshape.fill`)
+  opening `GameMenuSheet`.
+- **Main Action Buttons**:
+  1. **"Jogar contra bots"**: Vibrant hero gradient CTA button. Initiates the match
+     by launching the 3D coin toss (`ColorDrawOverlay`) and smoothly transitioning
+     to the game board (`currentScreen = .game`).
+  2. **"Online"**: Frosted glass card with `"EM BREVE"` badge (displays a gentle
+     toast notice upon tap).
+  3. **"Jogar tutorial"**: Glassmorphic CTA opening the interactive guided tutorial (`TutorialView`).
+- **Return to Home**: Abandoning a match via the top-right red "X" button or
+  tapping "Voltar ao Início" from the game over screen returns smoothly to the Home Screen.
+
+### Clean in-game board & streamlined "Configurações e Menu"
+The board is completely clean of floating side buttons.
+- **Top bar buttons during a match**:
+  - Top-left: Invisible placeholder (settings button is exclusive to HomeView so matches are clean and distraction-free).
+  - Center: Status pill ("Sua vez", "Vez do oponente", etc.).
+  - Top-right: **Exit/Abandon Match** button (`xmark`) styled with a prominent
+    **red accent** (`HiveTheme.danger`), asking confirmation to leave an ongoing game back to Home.
+- **`GameMenuSheet`**: Opened from the top-left button on the **Home Screen**:
+  - **Ações**: Pedir Dica (`lightbulb.fill`), Jogar Tutorial (`graduationcap.fill`),
+    and Como Jogar (`book.fill`), all styled in standard clean white.
+  - **Dificuldade do Oponente (IA)**: Prominent segmented selector (`Fácil`,
+    `Médio` as default, `Difícil`) that updates difficulty dynamically.
 
 ### Drag & drop interaction (coexists with tap selection)
 Players can place and move pieces either by tap-to-select → tap-target OR by

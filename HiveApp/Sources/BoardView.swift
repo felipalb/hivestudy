@@ -11,8 +11,6 @@ import UIKit
 struct BoardView: View {
     let game: GameController
     var baseHexSize: CGFloat = 30
-    /// Launches the guided tutorial overlay (owned by the root ContentView).
-    var onStartTutorial: () -> Void = {}
     /// Press-and-hold on a tile asks the root to explain that piece's movement.
     var onInspectPiece: (Piece) -> Void = { _ in }
 
@@ -20,7 +18,6 @@ struct BoardView: View {
     @State private var pan: CGSize = .zero
     @State private var viewSize: CGSize = .zero
     @State private var userAdjusted = false
-    @State private var showRules = false
     /// Stashed center of the GeometryReader — used to convert global finger
     /// coordinates into board-local hex coordinates during a drag.
     @State private var boardCenter: CGPoint = .zero
@@ -58,9 +55,6 @@ struct BoardView: View {
             .coordinateSpace(name: "board")
             .gesture(panGesture)
             .simultaneousGesture(zoomGesture)
-            // Docked at the mid-right edge — clear of the top status bar and the
-            // hand trays along the bottom, which used to overlap these controls.
-            .overlay(alignment: .trailing) { cameraControls }
             .onAppear { viewSize = geo.size; boardCenter = center; fit(animated: false) }
             .onChange(of: geo.size) { _, new in
                 viewSize = new
@@ -69,6 +63,7 @@ struct BoardView: View {
             }
             .onChange(of: game.state.board.tileCount) { _, _ in if !userAdjusted { fit(animated: true) } }
             .onChange(of: game.history.count) { _, new in if new == 0 { userAdjusted = false; fit(animated: true) } }
+            .onChange(of: game.recenterTrigger) { _, _ in userAdjusted = false; fit(animated: true) }
             // Keep hoveredHex in sync with the finger during hand-originated
             // drags (board-originated drags update it in their own gesture).
             .onChange(of: game.dragState.fingerPosition) { _, pos in
@@ -78,23 +73,6 @@ struct BoardView: View {
                     game.dragState.hoveredHex = game.dragState.validTargets.contains(hex) ? hex : nil
                 }
             }
-        }
-        // Presented from the floating "book" button. Hosted here (not on the root
-        // ContentView, which already owns the menu sheet) so the two never stack
-        // — a second `.sheet` on one view triggers "only a single sheet is
-        // supported". `RulesView` carries no NavigationStack of its own, so wrap
-        // it in one to get the title bar and a Done button.
-        .sheet(isPresented: $showRules) {
-            NavigationStack {
-                RulesView()
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Pronto") { showRules = false }.fontWeight(.semibold)
-                        }
-                    }
-            }
-            .presentationDetents([.medium, .large])
-            .preferredColorScheme(.dark)
         }
     }
 
@@ -433,59 +411,6 @@ struct BoardView: View {
                                center: .center, startRadius: 0, endRadius: 420)
             )
             .ignoresSafeArea()
-    }
-
-    // MARK: Camera controls
-
-    private var cameraControls: some View {
-        VStack(spacing: 10) {
-            cameraButton("graduationcap.fill", label: "Jogar tutorial") { onStartTutorial() }
-            hintButton
-            cameraButton("scope", label: "Recentralizar tabuleiro") { userAdjusted = false; fit(animated: true) }
-            cameraButton("book.fill", label: "Como jogar") { showRules = true }
-        }
-        .padding(12)
-    }
-
-    private func cameraButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 16, weight: .semibold))
-                .frame(width: 44, height: 44)
-                .background(.ultraThinMaterial, in: Circle())
-                .foregroundStyle(.white)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-    }
-
-    /// "Give me a hint" — asks the engine for a strong move and highlights it.
-    /// Tapping again while a hint shows dismisses it. Dimmed whenever it isn't
-    /// a human player's turn (or the match is over).
-    private var hintButton: some View {
-        let available = game.result == .ongoing && !game.isThinking
-            && game.humanControls(game.current) && !game.animationPhase.isAnimating
-        let showing = game.hint != nil
-        return Button {
-            if showing { game.dismissHint() } else { game.requestHint() }
-        } label: {
-            ZStack {
-                Image(systemName: "lightbulb.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(showing ? HiveTheme.accent(.queen) : .white)
-                if game.isComputingHint {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(.white)
-                }
-            }
-            .frame(width: 44, height: 44)
-            .background(.ultraThinMaterial, in: Circle())
-        }
-        .buttonStyle(.plain)
-        .opacity(available ? 1 : 0.35)
-        .disabled(!available)
-        .accessibilityLabel(showing ? "Ocultar dica" : "Me dá uma dica")
     }
 
     // MARK: Gestures

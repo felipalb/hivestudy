@@ -232,21 +232,26 @@ private func expectWellFormed(_ path: MovePath?, for move: Move, sourceLocation:
         #expect(MoveGenerator.path(of: .pass, in: state) == nil)
     }
 
-    /// Every legal piece move in a long random game must have an animatable
+    /// Every legal piece move in random games must have an animatable
     /// path — the UI depends on it to show how each bug travels.
     @Test func everyLegalMoveHasAPath() {
-        var state = GameState(config: GameConfig(expansions: [.mosquito, .ladybug]))
+        var totalPlies = 0
         var rng = PathRNG(seed: 42)
-        var plies = 0
-        while plies < 160 && state.result == .ongoing {
-            let moves = state.legalMoves()
-            for move in moves {
-                guard case .move = move else { continue }   // placements/pass have no route
-                expectWellFormed(MoveGenerator.path(of: move, in: state), for: move)
+        for _ in 0..<5 {
+            var state = GameState(config: GameConfig(expansions: [.mosquito, .ladybug]))
+            var plies = 0
+            while plies < 160 && state.result == .ongoing {
+                let moves = state.legalMoves()
+                for move in moves {
+                    guard case .move = move else { continue }   // placements/pass have no route
+                    expectWellFormed(MoveGenerator.path(of: move, in: state), for: move)
+                }
+                state.apply(moves[Int(rng.next() % UInt64(moves.count))])
+                plies += 1
             }
-            state.apply(moves[Int(rng.next() % UInt64(moves.count))])
-            plies += 1
+            totalPlies += plies
+            if totalPlies >= 40 { break }
         }
-        #expect(plies >= 40, "random game ended too early to exercise movement")
+        #expect(totalPlies >= 40, "random games ended too early to exercise movement")
     }
 }

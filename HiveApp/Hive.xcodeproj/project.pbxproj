@@ -14,6 +14,7 @@
 		37A8269831BE14CB726A56E9 /* HandTrayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AA8838C5DBA907AD849AC2F /* HandTrayView.swift */; };
 		38E65E4F43A462D6715827D8 /* HiveEngine in Frameworks */ = {isa = PBXBuildFile; productRef = AF64E4725E4020EE0049EF8D /* HiveEngine */; };
 		485F60C3F7DCAFB70055997F /* DragState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A004892C9825F66B8C202AE4 /* DragState.swift */; };
+		69756663852AB3FEF4992556 /* ColorDrawOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EAAD8813AB9FC3EB8D77C2 /* ColorDrawOverlay.swift */; };
 		69B4E6E3C651A813416C346E /* HexLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F036E4D6C087EE7D0231CC /* HexLayout.swift */; };
 		6F3E92B074EF44053D4ED348 /* TileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F024F6DD81154913E2A2E3 /* TileView.swift */; };
 		73C55B9B0684F50458063CBD /* BugIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28B1A1B24D64733EE7F4F347 /* BugIcon.swift */; };
@@ -24,6 +25,7 @@
 		C4B1A0E3F11CD03E29664F17 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB30CCAF2BFF7612D80CF0F1 /* Assets.xcassets */; };
 		D806722956FB79D688A864E8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C3E57D8E0A3EED874700328 /* Theme.swift */; };
 		DAA6537C95E5D5A1C5009DDB /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9738C0594A60B7FF24C63D8A /* OnboardingView.swift */; };
+		E18B8D7470E494DD6DDD8D6C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21180093ED3B285861AF5AD /* HomeView.swift */; };
 		EEE8C7043B3173EFF4C89B88 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E34298BE696C129009A8B60 /* BoardView.swift */; };
 /* End PBXBuildFile section */
 
@@ -44,7 +46,9 @@
 		912E5B17FB2088BFB8AEBD82 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		9738C0594A60B7FF24C63D8A /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		A004892C9825F66B8C202AE4 /* DragState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragState.swift; sourceTree = "<group>"; };
+		A21180093ED3B285861AF5AD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		B2F036E4D6C087EE7D0231CC /* HexLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexLayout.swift; sourceTree = "<group>"; };
+		B8EAAD8813AB9FC3EB8D77C2 /* ColorDrawOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorDrawOverlay.swift; sourceTree = "<group>"; };
 		BB30CCAF2BFF7612D80CF0F1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CC4536649F990CFC9838C525 /* MovementDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovementDiagramView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -66,6 +70,7 @@
 			children = (
 				0E34298BE696C129009A8B60 /* BoardView.swift */,
 				28B1A1B24D64733EE7F4F347 /* BugIcon.swift */,
+				B8EAAD8813AB9FC3EB8D77C2 /* ColorDrawOverlay.swift */,
 				8E4BE7DD7C226C91E49E09BE /* ContentView.swift */,
 				A004892C9825F66B8C202AE4 /* DragState.swift */,
 				1EEEE9AD59923A78324B6D85 /* GameController.swift */,
@@ -74,6 +79,7 @@
 				912E5B17FB2088BFB8AEBD82 /* Haptics.swift */,
 				B2F036E4D6C087EE7D0231CC /* HexLayout.swift */,
 				83895E603148A99B5CAE7926 /* HiveApp.swift */,
+				A21180093ED3B285861AF5AD /* HomeView.swift */,
 				CC4536649F990CFC9838C525 /* MovementDiagramView.swift */,
 				0D257F0D6F58F690BEFCEF6A /* NewGameSheet.swift */,
 				9738C0594A60B7FF24C63D8A /* OnboardingView.swift */,
@@ -189,6 +195,7 @@
 			files = (
 				EEE8C7043B3173EFF4C89B88 /* BoardView.swift in Sources */,
 				73C55B9B0684F50458063CBD /* BugIcon.swift in Sources */,
+				69756663852AB3FEF4992556 /* ColorDrawOverlay.swift in Sources */,
 				1DC5BDCDDE06AF021E1EA56B /* ContentView.swift in Sources */,
 				485F60C3F7DCAFB70055997F /* DragState.swift in Sources */,
 				7841210C97B8AA915CD385C1 /* GameController.swift in Sources */,
@@ -197,6 +204,7 @@
 				99094BB72A18BE9B68E8C58A /* Haptics.swift in Sources */,
 				69B4E6E3C651A813416C346E /* HexLayout.swift in Sources */,
 				AF70EE4BDFF271F480D7AF1D /* HiveApp.swift in Sources */,
+				E18B8D7470E494DD6DDD8D6C /* HomeView.swift in Sources */,
 				8B81B9A8749A51973DDF5183 /* MovementDiagramView.swift in Sources */,
 				1C48D7D5FDFE8F6BE497E0C0 /* NewGameSheet.swift in Sources */,
 				DAA6537C95E5D5A1C5009DDB /* OnboardingView.swift in Sources */,

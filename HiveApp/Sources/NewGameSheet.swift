@@ -1,93 +1,108 @@
 import SwiftUI
 import HiveEngine
 
-/// The single game menu / setup sheet.
+/// The main game menu / settings sheet.
 ///
-/// There is no "Start" button: before the match begins the settings apply to the
-/// current game when the sheet closes. Once play is under way the settings are
-/// hidden — only "How to Play" remains, alongside "Leave Match". "How to Play" is
-/// *pushed* inside this sheet's own NavigationStack (never a second sheet), which
-/// is what previously caused the "only a single sheet is supported" error.
+/// Contains game actions (Pedir Dica, Jogar Tutorial, Como Jogar) along with
+/// AI difficulty configuration and rules.
 struct GameMenuSheet: View {
     let game: GameController
+    var onStartTutorial: () -> Void = {}
     @State private var options: GameOptions
     @Environment(\.dismiss) private var dismiss
 
-    init(game: GameController) {
+    init(game: GameController, onStartTutorial: @escaping () -> Void = {}) {
         self.game = game
+        self.onStartTutorial = onStartTutorial
         _options = State(initialValue: game.options)
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                if game.hasStarted {
-                    startedSections
-                } else {
-                    setupSections
-                }
+                // MARK: Game Actions (Dica, Tutorial, Regras) - all in white
+                actionsSection
+
+                // MARK: AI Difficulty
+                settingsSections
             }
-            .navigationTitle(game.hasStarted ? "Menu" : "Novo Jogo")
+            .navigationTitle("Configurações e Menu")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Pronto") { dismiss() }.fontWeight(.semibold)
+                    Button("Pronto") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
                 }
             }
         }
         .presentationDetents([.medium, .large])
         .preferredColorScheme(.dark)
-        // No "Start": closing the sheet commits the chosen settings to the
-        // not-yet-started game (a no-op once play has begun).
-        .onDisappear { game.applySetup(options) }
+        .onDisappear {
+            game.options.difficulty = options.difficulty
+        }
     }
 
-    // MARK: Before the match begins
+    // MARK: - Actions Section (All text and icons in standard white)
 
-    @ViewBuilder private var setupSections: some View {
-        Section("Oponente") {
-            Picker("Modo", selection: $options.mode) {
-                ForEach(GameOptions.Mode.allCases) { mode in
-                    Text(mode.label).tag(mode)
+    @ViewBuilder private var actionsSection: some View {
+        Section("Ações") {
+            // Pedir / Ocultar Dica
+            let canHint = game.result == .ongoing && !game.isThinking && game.humanControls(game.current)
+            let isHintShowing = game.hint != nil
+            Button {
+                if isHintShowing {
+                    game.dismissHint()
+                } else {
+                    game.requestHint()
                 }
-            }
-            .pickerStyle(.segmented)
-
-            if options.mode == .vsAI {
-                Picker("Você joga de", selection: $options.humanColor) {
-                    Text("Brancas (primeiro)").tag(PlayerColor.white)
-                    Text("Pretas").tag(PlayerColor.black)
-                }
-                Picker("Dificuldade", selection: $options.difficulty) {
-                    // megaEasy is a hidden tier reserved for "Play Tutorial" above.
-                    ForEach(HiveAI.Difficulty.allCases.filter { $0 != .megaEasy }, id: \.self) { d in
-                        Text(d.displayLabel).tag(d)
+                dismiss()
+            } label: {
+                HStack {
+                    Label(
+                        isHintShowing ? "Ocultar Dica" : "Pedir Dica",
+                        systemImage: "lightbulb.fill"
+                    )
+                    .foregroundStyle(.white)
+                    Spacer()
+                    if game.isComputingHint {
+                        ProgressView().controlSize(.mini).tint(.white)
                     }
                 }
             }
-        }
+            .disabled(!canHint && !isHintShowing)
 
-        Section {
-            Toggle("Abertura de torneio", isOn: $options.tournamentOpening)
-        } header: {
-            Text("Regras")
-        } footer: {
-            Text("A abertura de torneio proibe colocar a Rainha como primeira peça.")
+            // Jogar Tutorial
+            Button {
+                dismiss()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    onStartTutorial()
+                }
+            } label: {
+                Label("Jogar Tutorial", systemImage: "graduationcap.fill")
+                    .foregroundStyle(.white)
+            }
+
+            // Como Jogar (Regras)
+            NavigationLink {
+                RulesView()
+            } label: {
+                Label("Como Jogar (Regras)", systemImage: "book.fill")
+                    .foregroundStyle(.white)
+            }
         }
     }
 
-    // MARK: While a match is in progress
+    // MARK: - Settings Sections
 
-    @ViewBuilder private var startedSections: some View {
-        Section {
-            Button(role: .destructive) {
-                game.leaveMatch()
-                dismiss()
-            } label: {
-                Label("Abandonar Partida", systemImage: "flag.fill")
+    @ViewBuilder private var settingsSections: some View {
+        Section("Dificuldade do Oponente (IA)") {
+            Picker("Dificuldade", selection: $options.difficulty) {
+                ForEach(HiveAI.Difficulty.allCases.filter { $0 != .megaEasy }, id: \.self) { d in
+                    Text(d.displayLabel).tag(d)
+                }
             }
-        } footer: {
-            Text("Encerra o jogo atual e permite escolher novas configurações.")
+            .pickerStyle(.segmented)
         }
     }
 }

@@ -1,7 +1,13 @@
 import SwiftUI
 import HiveEngine
 
+enum AppScreen {
+    case home
+    case game
+}
+
 struct ContentView: View {
+    @State private var currentScreen: AppScreen = .home
     @State private var game = GameController()
     @State private var showMenu = false
     @State private var showLeaveConfirm = false
@@ -14,8 +20,106 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
+            if currentScreen == .home {
+                HomeView(
+                    onPlayBots: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            currentScreen = .game
+                        }
+                        game.newGame(showDrawAnimation: true)
+                    },
+                    onPlayTutorial: {
+                        showTutorial = true
+                    },
+                    onOpenSettings: {
+                        showMenu = true
+                    }
+                )
+                .transition(.opacity)
+            } else {
+                gameView
+                    .transition(.opacity)
+            }
+
+            // A match interrupted by the app being killed: let the player pick up
+            // where they left off, or drop it.
+            if game.pendingResume != nil {
+                ResumeOverlay(
+                    onContinue: {
+                        game.resume()
+                        withAnimation { currentScreen = .game }
+                    },
+                    onLeave: {
+                        game.discardResume()
+                        withAnimation { currentScreen = .home }
+                    }
+                )
+                .transition(.opacity)
+                .zIndex(25)
+            }
+
+            // First launch only: a short onboarding walkthrough, on top of
+            // everything else. Its "Play Tutorial" choice launches the guided
+            // tutorial overlay below.
+            if showOnboarding {
+                OnboardingOverlay(onFinish: { startTutorial in
+                    showOnboarding = false
+                    if startTutorial { showTutorial = true }
+                })
+                .transition(.opacity)
+                .zIndex(30)
+            }
+
+            // The interactive, fully-guided tutorial.
+            if showTutorial {
+                TutorialView(
+                    onExit: { showTutorial = false },
+                    onPlayGame: {
+                        showTutorial = false
+                        withAnimation { currentScreen = .game }
+                        game.newGame(showDrawAnimation: true)
+                    }
+                )
+                .transition(.opacity)
+                .zIndex(35)
+            }
+
+            // 3D Color draw / coin-flip reveal overlay when a new match begins
+            if let drawnColor = game.pendingColorDraw {
+                ColorDrawOverlay(
+                    drawnColor: drawnColor,
+                    onComplete: { game.completeColorDraw() }
+                )
+                .transition(.opacity)
+                .zIndex(40)
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: currentScreen)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: game.result)
+        .animation(.easeInOut(duration: 0.25), value: game.pendingResume != nil)
+        .animation(.easeInOut(duration: 0.2), value: showLeaveConfirm)
+        .animation(.easeInOut(duration: 0.25), value: showOnboarding)
+        .animation(.easeInOut(duration: 0.25), value: showTutorial)
+        .animation(.easeInOut(duration: 0.2), value: inspectedPiece)
+        .animation(.easeInOut(duration: 0.25), value: game.pendingColorDraw != nil)
+        .animation(.easeInOut(duration: 0.2), value: game.isPieceSelected)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: game.toast)
+        .preferredColorScheme(.dark)
+        .sheet(isPresented: $showMenu) {
+            GameMenuSheet(game: game, onStartTutorial: { showTutorial = true })
+        }
+        // Cache the match whenever the app leaves the foreground, so nothing is
+        // lost even if it's killed in the background.
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { game.persistNow() }
+        }
+    }
+
+    // MARK: - Game View
+
+    private var gameView: some View {
+        ZStack {
             BoardView(game: game,
-                      onStartTutorial: { showTutorial = true },
                       onInspectPiece: { inspectedPiece = $0 })
                 .ignoresSafeArea()
 
@@ -44,54 +148,28 @@ struct ContentView: View {
                 GameOverOverlay(
                     game: game,
                     onPlayAgain: { game.newGame() },
+                    onGoHome: {
+                        game.leaveMatch()
+                        withAnimation { currentScreen = .home }
+                    },
                     onChangeSetup: { showMenu = true }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
-            }
-
-            // A match interrupted by the app being killed: let the player pick up
-            // where they left off, or drop it.
-            if game.pendingResume != nil {
-                ResumeOverlay(
-                    onContinue: { game.resume() },
-                    onLeave: { game.discardResume() }
-                )
-                .transition(.opacity)
-            }
-
-            // Confirm before abandoning a match in progress (opened by the
-            // top-bar "X", which replaces the settings button once play begins).
-            if showLeaveConfirm {
-                LeaveConfirmOverlay(
-                    onLeave: { game.leaveMatch(); showLeaveConfirm = false },
-                    onContinue: { showLeaveConfirm = false }
-                )
-                .transition(.opacity)
-                .zIndex(5)
-            }
-
-            // First launch only: a short onboarding walkthrough, on top of
-            // everything else. Its "Play Tutorial" choice launches the guided
-            // tutorial overlay below.
-            if showOnboarding {
-                OnboardingOverlay(onFinish: { startTutorial in
-                    showOnboarding = false
-                    if startTutorial { showTutorial = true }
-                })
-                .transition(.opacity)
                 .zIndex(10)
             }
 
-            // The interactive, fully-guided tutorial. Owned here (not BoardView)
-            // so it sits above the whole UI and never affects the live game —
-            // exiting just returns to whatever was on the board.
-            if showTutorial {
-                TutorialView(
-                    onExit: { showTutorial = false },
-                    onPlayGame: { showTutorial = false; game.newGame() }
+            // Confirm before abandoning a match in progress
+            if showLeaveConfirm {
+                LeaveConfirmOverlay(
+                    onLeave: {
+                        game.leaveMatch()
+                        showLeaveConfirm = false
+                        withAnimation { currentScreen = .home }
+                    },
+                    onContinue: { showLeaveConfirm = false }
                 )
                 .transition(.opacity)
-                .zIndex(15)
+                .zIndex(20)
             }
 
             // Opened by press-and-holding a tile on the board: a focused card
@@ -99,23 +177,8 @@ struct ContentView: View {
             if let piece = inspectedPiece {
                 PieceMoveInfoOverlay(piece: piece, onDismiss: { inspectedPiece = nil })
                     .transition(.opacity)
-                    .zIndex(8)
+                    .zIndex(15)
             }
-        }
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: game.result)
-        .animation(.easeInOut(duration: 0.25), value: game.pendingResume != nil)
-        .animation(.easeInOut(duration: 0.2), value: showLeaveConfirm)
-        .animation(.easeInOut(duration: 0.25), value: showOnboarding)
-        .animation(.easeInOut(duration: 0.25), value: showTutorial)
-        .animation(.easeInOut(duration: 0.2), value: inspectedPiece)
-        .animation(.easeInOut(duration: 0.2), value: game.isPieceSelected)
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: game.toast)
-        .preferredColorScheme(.dark)
-        .sheet(isPresented: $showMenu) { GameMenuSheet(game: game) }
-        // Cache the match whenever the app leaves the foreground, so nothing is
-        // lost even if it's killed in the background.
-        .onChange(of: scenePhase) { _, phase in
-            if phase != .active { game.persistNow() }
         }
     }
 
@@ -123,16 +186,20 @@ struct ContentView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            circleButton("arrow.uturn.backward", label: "Desfazer jogada", enabled: game.canUndo) { game.undo() }
+            // Invisible placeholder so status pill remains perfectly centered
+            Circle()
+                .frame(width: 44, height: 44)
+                .opacity(0)
             Spacer(minLength: 8)
             statusPill
             Spacer(minLength: 8)
-            // Before play begins the button opens setup; once a tile is down it
-            // becomes an "X" that asks to confirm leaving the match.
-            if game.hasStarted {
-                circleButton("xmark", label: "Sair da partida") { showLeaveConfirm = true }
-            } else {
-                circleButton("slider.horizontal.3", label: "Configurar novo jogo") { showMenu = true }
+            circleButton("xmark", label: "Sair da partida", tint: HiveTheme.danger) {
+                if game.hasStarted {
+                    showLeaveConfirm = true
+                } else {
+                    game.leaveMatch()
+                    withAnimation { currentScreen = .home }
+                }
             }
         }
         .padding(.top, 4)
@@ -190,13 +257,17 @@ struct ContentView: View {
         }
     }
 
-    private func circleButton(_ symbol: String, label: String, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+    private func circleButton(_ symbol: String, label: String, enabled: Bool = true, tint: Color = .white, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 17, weight: .semibold))
                 .frame(width: 44, height: 44)
                 .background(.ultraThinMaterial, in: Circle())
-                .foregroundStyle(.white)
+                .foregroundStyle(tint)
+                .overlay(
+                    Circle()
+                        .stroke(tint == .white ? Color.white.opacity(0.1) : tint.opacity(0.4), lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
         .opacity(enabled ? 1 : 0.35)
@@ -207,11 +278,9 @@ struct ContentView: View {
     // MARK: Trays
 
     private var trays: some View {
-        VStack(spacing: 8) {
-            HandTrayView(game: game, color: .black, onInspectPiece: { inspectedPiece = $0 })
-            HandTrayView(game: game, color: .white, onInspectPiece: { inspectedPiece = $0 })
-        }
-        .padding(.bottom, 6)
+        let playerColor = game.options.mode == .vsAI ? game.options.humanColor : game.current
+        return HandTrayView(game: game, color: playerColor, onInspectPiece: { inspectedPiece = $0 })
+            .padding(.bottom, 6)
     }
 
     /// Sits just above the hand trays while a board piece is picked up, nudging
@@ -290,7 +359,9 @@ private struct ThinkingDots: View {
 private struct GameOverOverlay: View {
     let game: GameController
     let onPlayAgain: () -> Void
+    let onGoHome: () -> Void
     let onChangeSetup: () -> Void
+
     @State private var appeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -326,11 +397,8 @@ private struct GameOverOverlay: View {
                 VStack(spacing: 10) {
                     bigButton("Jogar Novamente", filled: true, action: onPlayAgain)
                         .opacity(appeared ? 1.0 : 0.0)
-                    HStack(spacing: 10) {
-                        bigButton("Desfazer", filled: false) { game.undo() }
-                        bigButton("Configurar", filled: false, action: onChangeSetup)
-                    }
-                    .opacity(appeared ? 1.0 : 0.0)
+                    bigButton("Voltar ao Início", filled: false, action: onGoHome)
+                        .opacity(appeared ? 1.0 : 0.0)
                 }
             }
             .padding(28)
@@ -353,7 +421,11 @@ private struct GameOverOverlay: View {
 
     private var title: String {
         switch game.result {
-        case .win(let c): return "\(c == .white ? "Brancas" : "Pretas") Vencem"
+        case .win(let c):
+            if game.options.mode == .vsAI {
+                return c == game.options.humanColor ? "Você Venceu! 🎉" : "Oponente Venceu"
+            }
+            return "\(c == .white ? "Brancas" : "Pretas") Vencem"
         case .draw: return "Empate"
         case .ongoing: return ""
         }
