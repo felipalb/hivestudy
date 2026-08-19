@@ -365,6 +365,42 @@ final class GameController {
         newGame(options: newOptions)
     }
 
+    // MARK: - Tutorial Mode Support
+
+    /// Constraints applied during a guided tutorial drill.
+    struct TutorialConstraint: Equatable {
+        enum Kind: Equatable {
+            case none
+            case place(bug: Bug, targets: Set<Hex>)
+            case move(pieceID: Int, targets: Set<Hex>)
+        }
+        var kind: Kind = .none
+        var onCompleted: (() -> Void)? = nil
+
+        static func == (lhs: TutorialConstraint, rhs: TutorialConstraint) -> Bool {
+            lhs.kind == rhs.kind
+        }
+    }
+
+    var tutorialConstraint: TutorialConstraint = TutorialConstraint(kind: .none)
+
+    /// Loads a drill position for the tutorial with constraints.
+    func loadTutorialState(_ newState: GameState, constraint: TutorialConstraint.Kind, onCompleted: (() -> Void)? = nil) {
+        state = newState
+        history.removeAll()
+        selection = .none
+        targets = []
+        hint = nil
+        isThinking = false
+        toast = nil
+        toastTask?.cancel()
+        dragState.reset()
+        animationPhase = .none
+        animationProgress = 0
+        tutorialConstraint = TutorialConstraint(kind: constraint, onCompleted: onCompleted)
+        recenterBoard()
+    }
+
     // MARK: Selection & tapping
 
     /// Tap on a tile in the player's hand tray.
@@ -386,6 +422,27 @@ final class GameController {
             Haptics.error()
             showToast(message, icon: "hourglass")
             return
+        }
+
+        if tutorialConstraint.kind != .none {
+            if case let .place(wantBug, allowedTargets) = tutorialConstraint.kind {
+                guard bug == wantBug else {
+                    showToast("Toque no \(wantBug.displayName) para esta lição", icon: "hand.tap")
+                    Haptics.error()
+                    return
+                }
+                if case let .hand(b, c) = selection, b == bug, c == color {
+                    clearSelection(); return
+                }
+                selection = .hand(bug, color)
+                targets = allowedTargets
+                Haptics.selection()
+                return
+            } else {
+                showToast("Mova a peça indicada no tabuleiro", icon: "hand.tap")
+                Haptics.error()
+                return
+            }
         }
 
         if case let .hand(b, c) = selection, b == bug, c == color {
@@ -452,6 +509,26 @@ final class GameController {
         if case let .board(sel, _) = selection, sel == id {
             clearSelection(); return
         }
+
+        if tutorialConstraint.kind != .none {
+            if case let .move(wantID, allowedTargets) = tutorialConstraint.kind {
+                guard id == wantID else {
+                    showToast("Mova a peça indicada para esta lição", icon: "hand.tap")
+                    Haptics.error()
+                    return
+                }
+                selection = .board(pieceID: id, hex: hex)
+                hint = nil
+                Haptics.selection()
+                targets = allowedTargets
+                return
+            } else if case let .place(wantBug, _) = tutorialConstraint.kind {
+                showToast("Coloque o \(wantBug.displayName) da sua mão primeiro", icon: "hand.tap")
+                Haptics.error()
+                return
+            }
+        }
+
         selection = .board(pieceID: id, hex: hex)
         hint = nil                     // the player is acting on their own now
         Haptics.selection()
@@ -486,22 +563,46 @@ final class GameController {
         let piece: Piece?
         var dragTargets: Set<Hex>
 
-        switch source {
-        case let .hand(bug, color):
-            guard color == current, humanControls(color) else { return }
-            piece = Piece(id: -1, bug: bug, color: color)
-            var cells = Set(MoveGenerator.placementCells(state))
-            if state.mustPlaceQueen && bug != .queen { cells = [] }
-            if options.tournamentOpening, state.currentTurnIndex == 1,
-               !state.queenPlaced(color), bug == .queen { cells = [] }
-            dragTargets = cells
+        if tutorialConstraint.kind != .none {
+            switch source {
+            case let .hand(bug, color):
+                guard color == current, humanControls(color) else { return }
+                guard case let .place(wantBug, allowedTargets) = tutorialConstraint.kind, bug == wantBug else {
+                    Haptics.error()
+                    return
+                }
+                piece = Piece(id: -1, bug: bug, color: color)
+                dragTargets = allowedTargets
 
-        case let .board(pieceID, from):
-            guard let top = state.board.topPiece(from),
-                  top.id == pieceID, top.color == current,
-                  humanControls(top.color) else { return }
-            piece = top
-            dragTargets = Set(MoveGenerator.destinations(for: pieceID, in: state))
+            case let .board(pieceID, from):
+                guard let top = state.board.topPiece(from),
+                      top.id == pieceID, top.color == current,
+                      humanControls(top.color) else { return }
+                guard case let .move(wantID, allowedTargets) = tutorialConstraint.kind, pieceID == wantID else {
+                    Haptics.error()
+                    return
+                }
+                piece = top
+                dragTargets = allowedTargets
+            }
+        } else {
+            switch source {
+            case let .hand(bug, color):
+                guard color == current, humanControls(color) else { return }
+                piece = Piece(id: -1, bug: bug, color: color)
+                var cells = Set(MoveGenerator.placementCells(state))
+                if state.mustPlaceQueen && bug != .queen { cells = [] }
+                if options.tournamentOpening, state.currentTurnIndex == 1,
+                   !state.queenPlaced(color), bug == .queen { cells = [] }
+                dragTargets = cells
+
+            case let .board(pieceID, from):
+                guard let top = state.board.topPiece(from),
+                      top.id == pieceID, top.color == current,
+                      humanControls(top.color) else { return }
+                piece = top
+                dragTargets = Set(MoveGenerator.destinations(for: pieceID, in: state))
+            }
         }
 
         guard let piece, !dragTargets.isEmpty else {
@@ -641,11 +742,18 @@ final class GameController {
                 self.animationProgress = 0
                 if self.state.result != .ongoing { self.announceEnd() }
                 self.persist()
-                self.scheduleAIIfNeeded()
-                self.autoPassIfHumanStuck()
+                if let onCompleted = self.tutorialConstraint.onCompleted {
+                    onCompleted()
+                } else {
+                    self.scheduleAIIfNeeded()
+                    self.autoPassIfHumanStuck()
+                }
             }
         } else {
             applyPlain(move)
+            if let onCompleted = tutorialConstraint.onCompleted {
+                onCompleted()
+            }
         }
     }
 

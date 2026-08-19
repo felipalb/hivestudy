@@ -222,27 +222,19 @@ Players can place and move pieces either by tap-to-select → tap-target OR by
   onto a valid target commits the move through the existing animation
   pipeline; dropping elsewhere cancels cleanly.
 
-### Press-and-hold to inspect a piece + animated movement diagrams
-Long-pressing (`.onLongPressGesture`, 0.4s) opens `PieceMoveInfoOverlay` — a
-focused card explaining just that bug's movement with an **animated mini-board
-diagram** (`MovementDiagramView`):
-- **Mini-loop visualizer**: `MovementDiagramView` uses `TimelineView(.animation)`
-  and `Canvas` to loop a bug along its canonical pattern against a tiny 3–5 tile
-  cluster (e.g. Ant loops the perimeter, Spider walks exactly 3 steps,
-  Grasshopper jumps the line, Beetle climbs on top, Ladybug does up-over-down).
-  Under `accessibilityReduceMotion`, it pauses at a static keyframe.
-- It works in **two** places with identical behaviour:
-  - **On the board** (`BoardView`) — any tile on **top** of the hive.
-  - **In the hand tray** (`HandTrayView`) — any chip; it hands up a display-only
-    `Piece(id: -1, …)` since a hand tile has no board identity.
-
-Both fire a rigid haptic and hand the `Piece` up via an `onInspectPiece`
-closure. The overlay is hosted on the **root `ContentView`** (as
-`inspectedPiece`), like the other modal overlays, so its scrim sits above the
-hand trays. The blurb comes from `RulesView.bugs`, the *same* source the rules
-screen uses, so both stay in sync. Whenever the player has any piece picked up
-(`GameController.isPieceSelected`), a subtle "Hold to see piece movement"
-capsule (`ContentView.selectionHint`) appears just above the trays to teach the
+### Interactive Guided Tutorial (`TutorialView.swift`)
+The tutorial completely reuses the full base game engine and components:
+- **Real `BoardView` & `GameController`**: Powered directly by `BoardView(game: game, onInspectPiece: { ... })`,
+  ensuring 100% parity with live games.
+- **Identical Drag & Drop**: Players can place and move pieces by tap-to-select OR
+  by direct drag & drop with finger-following ghost tiles and target snapping.
+- **Piece Travel Animations**: All moves reconstruct and animate along their complete
+  `MoveGenerator.path` (step-by-step slides, grasshopper jumps, beetle climb,
+  ladybug up-over-down, mosquito copying) with real-time step haptic ticks.
+- **Hold to Inspect**: Long-pressing any piece on the board or in the hand tray opens
+  `PieceMoveInfoOverlay` with the live animated `MovementDiagramView`.
+- **Haptics & Coaching**: Valid/invalid taps receive real-time tactile feedback and
+  standard coaching toast pills. Completing a drill advances smoothly to the next step.
 gesture.
 
 ### Expansion roster (Mosquito + Ladybug, both sides, always on)

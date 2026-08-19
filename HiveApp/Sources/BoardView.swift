@@ -101,23 +101,6 @@ struct BoardView: View {
                 }
             }
 
-            // Queen danger rings
-            if game.state.result == .ongoing {
-                ForEach([PlayerColor.white, .black], id: \.self) { color in
-                    if let queenHex = queenHex(for: color) {
-                        QueenDangerRing(
-                            coveredSides: coveredSides(of: queenHex, color: color),
-                            color: color,
-                            size: baseHexSize
-                        )
-                        .position(layout.point(for: queenHex) + center)
-                        .zIndex(999)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                    }
-                }
-            }
-
             // Selected piece aura
             if case let .board(id, hex) = game.selection,
                let piece = game.state.board.topPiece(hex), piece.id == id {
@@ -375,25 +358,6 @@ struct BoardView: View {
 
     // MARK: - Queen Danger
 
-    private func queenHex(for color: PlayerColor) -> Hex? {
-        for hex in game.state.board.occupiedCells {
-            if let top = game.state.board.topPiece(hex),
-               top.bug == .queen && top.color == color {
-                return hex
-            }
-        }
-        return nil
-    }
-
-    private func coveredSides(of hex: Hex, color: PlayerColor) -> Int {
-        let board = game.state.board
-        let opponent: PlayerColor = color == .white ? .black : .white
-        return hex.neighbors.filter { neighbor in
-            guard let top = board.topPiece(neighbor) else { return false }
-            return top.color == opponent
-        }.count
-    }
-
     /// Fire a firm tactile tick and hand the held piece up to the root, which
     /// presents the movement-explanation modal.
     private func inspect(_ piece: Piece) {
@@ -638,40 +602,6 @@ private struct TargetMarker: View {
             }
             withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                 breathe = true
-            }
-        }
-    }
-}
-
-/// Progress ring around a queen showing how many sides the opponent covers.
-private struct QueenDangerRing: View {
-    let coveredSides: Int
-    let color: PlayerColor
-    let size: CGFloat
-    @State private var glow = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        let danger = coveredSides >= 4
-        ZStack {
-            ForEach(0..<6, id: \.self) { i in
-                let angle = Angle.degrees(Double(i) * 60 - 90)
-                let radius = size * 1.05
-                let isCovered = i < coveredSides
-                Capsule()
-                    .fill(isCovered ? HiveTheme.danger : Color.white.opacity(0.08))
-                    .frame(width: size * 0.28, height: size * 0.08)
-                    .offset(x: radius * cos(angle.radians), y: radius * sin(angle.radians))
-                    .rotationEffect(angle + .degrees(90))
-                    .opacity(isCovered ? (danger ? (glow ? 1.0 : 0.6) : 0.85) : 0.3)
-            }
-        }
-        .frame(width: size * sqrt(3), height: size * 2)
-        .onAppear {
-            if danger && !reduceMotion {
-                withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
-                    glow = true
-                }
             }
         }
     }

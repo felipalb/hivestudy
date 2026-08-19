@@ -563,7 +563,7 @@ private struct LeaveConfirmOverlay: View {
 /// Explains a single piece's movement, opened by press-and-holding that tile on
 /// the board. The blurb is the same one the rules screen uses, so both stay in
 /// sync from one source (`RulesView.bugs`).
-private struct PieceMoveInfoOverlay: View {
+struct PieceMoveInfoOverlay: View {
     let piece: Piece
     let onDismiss: () -> Void
 

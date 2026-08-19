@@ -7,10 +7,7 @@ import UIKit
 
 // MARK: - Script model
 
-/// One guided step. A step either just narrates (a "Next" button advances) or
-/// asks for a single, constrained action — place a specific bug, or move a
-/// specific piece — accepting only the highlighted cells. Each step optionally
-/// loads its own drill position so the lessons stay isolated and reliable.
+/// One guided step in the tutorial.
 struct TutorialStep {
     enum Action: Equatable {
         case narrate
@@ -24,138 +21,15 @@ struct TutorialStep {
     /// The last step shows "finish" buttons instead of "Next".
     var isFinal = false
 
-    /// The hand bug that should glow before it's picked up.
+    /// The hand bug that should be placed in this step.
     var hintBug: Bug? { if case let .place(bug, _) = action { return bug }; return nil }
-    /// The board piece that should glow before it's tapped.
+    /// The board piece that should move in this step.
     var hintPieceID: Int? { if case let .move(id, _, _) = action { return id }; return nil }
-}
-
-// MARK: - Controller
-
-/// Drives the guided tutorial: a fixed script of drills, a displayed game state,
-/// and constrained tap handling that only accepts the scripted action. Kept
-/// entirely separate from `GameController` so the live game is never affected.
-@MainActor
-@Observable
-final class TutorialController {
-    enum Selection: Equatable { case none, hand(Bug), board(Int) }
-
-    let steps: [TutorialStep]
-    private(set) var index = 0
-    private(set) var state: GameState
-    private(set) var targets: Set<Hex> = []
-    private(set) var selection: Selection = .none
-    /// True between completing a step's action and auto-advancing — freezes input
-    /// so a double-tap can't leak into the next step.
-    private(set) var acted = false
-
-    var step: TutorialStep { steps[index] }
-    var stepNumber: Int { index + 1 }
-    var stepCount: Int { steps.count }
-
-    init() {
-        let script = TutorialScript.build()
-        steps = script
-        state = script.first?.board ?? GameState()
-        enter(0)
-    }
-
-    // MARK: Step flow
-
-    private func enter(_ i: Int) {
-        index = i
-        if let board = step.board { state = board }
-        selection = .none
-        targets = []
-        acted = false
-    }
-
-    /// Advance from a narration step (the "Next" button).
-    func next() {
-        guard case .narrate = step.action else { return }
-        goForward()
-    }
-
-    private func goForward() {
-        guard index + 1 < steps.count else { return }
-        withAnimation(.easeInOut(duration: 0.25)) { enter(index + 1) }
-    }
-
-    // MARK: Constrained interaction
-
-    func tapHand(_ bug: Bug) {
-        guard !acted, case let .place(want, accept) = step.action, bug == want else { return }
-        if selection == .hand(bug) {          // tap again to put it back down
-            selection = .none; targets = []; return
-        }
-        selection = .hand(bug)
-        targets = accept
-        impact(.light)
-    }
-
-    func tapHex(_ hex: Hex) {
-        guard !acted else { return }
-        switch step.action {
-        case .narrate:
-            break
-
-        case let .place(want, accept):
-            guard selection == .hand(want) else { return }   // must pick the tile up first
-            guard accept.contains(hex) else { return }        // ignore wrong cells
-            perform(.place(want, at: hex))
-
-        case let .move(pieceID, from, accept):
-            if selection != .board(pieceID) {
-                // First tap selects the scripted piece (any other tap is ignored).
-                if state.board.topPiece(hex)?.id == pieceID {
-                    selection = .board(pieceID)
-                    targets = accept
-                    impact(.light)
-                }
-                return
-            }
-            guard accept.contains(hex) else { return }
-            perform(.move(pieceID: pieceID, from: from, to: hex))
-        }
-    }
-
-    private func perform(_ move: Move) {
-        acted = true
-        selection = .none
-        targets = []
-        impact(.rigid)
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
-            state.apply(move)
-        }
-        if state.result != .ongoing { notifyWin() }
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(750))
-            goForward()
-        }
-    }
-
-    var isSelected: (Int) -> Bool { { [selection] id in selection == .board(id) } }
-
-    // MARK: Haptics
-
-    private func impact(_ style: Style) {
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: style == .light ? .light : .rigid).impactOccurred()
-        #endif
-    }
-    private func notifyWin() {
-        #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        #endif
-    }
-    private enum Style { case light, rigid }
 }
 
 // MARK: - Script
 
-/// Builds the drills and the ordered step list. Boards are constructed with
-/// stable tile ids so the move steps can name their piece; the winning drill's
-/// geometry is guarded by `TutorialScenarioTests` in the engine test suite.
+/// Builds the drills and the ordered step list.
 private enum TutorialScript {
     static func build() -> [TutorialStep] {
         let drill1 = placementDrill()
@@ -179,11 +53,11 @@ private enum TutorialScript {
         return [
             // --- Core tutorial ---
             TutorialStep(
-                caption: "Bem-vindo ao Hive! Você vence cercando a Rainha adversária em todos os seis lados. Vamos aprender jogando alguns movimentos — toque em Próximo.",
+                caption: "Bem-vindo ao Hive! Você vence cercando a Rainha adversária em todos os seis lados. Vamos aprender jogando — toque em Próximo.",
                 action: .narrate, board: drill1),
 
             TutorialStep(
-                caption: "Coloque uma peça da sua mão. Novas peças devem tocar sua própria cor e nunca a do oponente. Toque no Gafanhoto brilhante, depois em um espaço brilhante.",
+                caption: "Coloque uma peça da sua mão. Novas peças devem tocar sua própria cor e nunca a do oponente. Toque ou arraste o Gafanhoto até um espaço destacado.",
                 action: .place(bug: .grasshopper, accept: placeCells1), board: drill1),
 
             TutorialStep(
@@ -191,24 +65,24 @@ private enum TutorialScript {
                 action: .narrate, board: drill2),
 
             TutorialStep(
-                caption: "É o quarto turno e sua Rainha ainda está na mão, então ela precisa ser colocada agora. Toque na Rainha brilhante, depois em um espaço brilhante.",
+                caption: "É o quarto turno e sua Rainha ainda está na mão. Ela precisa entrar agora! Toque ou arraste sua Rainha até um espaço destacado.",
                 action: .place(bug: .queen, accept: placeCells2), board: drill2),
 
             TutorialStep(
-                caption: "Com sua Rainha em jogo, você pode mover peças. A Formiga Soldado desliza livremente ao redor da colmeia.",
+                caption: "Com sua Rainha em jogo, você pode mover peças. A Formiga Soldado desliza livremente por qualquer distância ao redor da colmeia.",
                 action: .narrate, board: drill3),
 
             TutorialStep(
-                caption: "Mova sua Formiga. Toque nela para pegá-la, depois deslize até um espaço brilhante.",
+                caption: "Mova sua Formiga: toque nela ou arraste-a diretamente para um dos espaços destacados ao redor da colmeia.",
                 action: .move(pieceID: antID, from: Hex(-1, 0), accept: antTargets), board: drill3),
 
             // --- Per-bug movement drills ---
             TutorialStep(
-                caption: "A Aranha move exatamente três espaços ao redor da colmeia — nem mais, nem menos. Leve a Aranha exatamente até o destino.",
+                caption: "A Aranha move exatamente três espaços ao redor da colmeia — nem mais, nem menos. Segure qualquer peça para ver suas regras de movimento.",
                 action: .narrate, board: drillSpider),
 
             TutorialStep(
-                caption: "Mova sua Aranha: toque nela, depois toque em um espaço brilhante (exatamente 3 passos ao redor).",
+                caption: "Mova sua Aranha: toque ou arraste-a até o destino (exatamente 3 passos ao redor da colmeia).",
                 action: .move(pieceID: spiderDrillID, from: spiderDrillFrom, accept: spiderTargets), board: drillSpider),
 
             TutorialStep(
@@ -216,36 +90,36 @@ private enum TutorialScript {
                 action: .narrate, board: drillBeetle),
 
             TutorialStep(
-                caption: "Mova seu Besouro para cima da peça adversária.",
+                caption: "Mova seu Besouro para cima da peça adversária (você pode tocar ou arrastar).",
                 action: .move(pieceID: beetleDrillID, from: beetleDrillFrom, accept: beetleTargets), board: drillBeetle),
 
             TutorialStep(
-                caption: "A Joaninha move exatamente três espaços: sobe no topo da colmeia, cruza por cima de uma peça, depois desce para uma célula vazia. Leve-a para o outro lado!",
+                caption: "A Joaninha move exatamente três espaços: sobe dois pelo topo da colmeia e desce em uma célula vazia. Experimente!",
                 action: .narrate, board: drillLadybug),
 
             TutorialStep(
-                caption: "Mova sua Joaninha: ela vai subir, cruzar e descer. Toque nela, depois no destino brilhante.",
+                caption: "Mova sua Joaninha: ela vai subir, cruzar e descer. Toque ou arraste-a até o destino.",
                 action: .move(pieceID: ladybugDrillID, from: ladybugDrillFrom, accept: ladybugTargets), board: drillLadybug),
 
             TutorialStep(
-                caption: "O Mosquito é especial: ele copia o movimento de qualquer inseto adjacente. Ao lado de uma Formiga, desliza como Formiga. Ao lado de um Gafanhoto, pula como Gafanhoto.",
+                caption: "O Mosquito copia o movimento de qualquer inseto adjacente. Ao lado de uma Formiga, desliza como Formiga. Ao lado de um Gafanhoto, pula como Gafanhoto.",
                 action: .narrate, board: drillMosquito),
 
             TutorialStep(
-                caption: "Mova seu Mosquito: ele toca uma Formiga, então pode deslizar livremente. Leve-o ao destino.",
+                caption: "Mova seu Mosquito: ele toca uma Formiga, então pode deslizar livremente pelo perímetro da colmeia.",
                 action: .move(pieceID: mosquitoDrillID, from: mosquitoDrillFrom, accept: mosquitoTargets), board: drillMosquito),
 
             // --- Win drill ---
             TutorialStep(
-                caption: "Agora o final. A Rainha das Pretas tem apenas um lado aberto. O Gafanhoto pula em linha reta sobre outras peças — direto para a abertura.",
+                caption: "Agora o xeque-mate! A Rainha adversária tem apenas um lado aberto. O Gafanhoto pula em linha reta sobre as peças até a primeira vaga.",
                 action: .narrate, board: drill4),
 
             TutorialStep(
-                caption: "Pule seu Gafanhoto na abertura brilhante para cobrir o último lado da Rainha e vencer!",
+                caption: "Pule seu Gafanhoto na abertura destacada para fechar o último lado da Rainha e vencer a partida!",
                 action: .move(pieceID: winnerID, from: Hex(2, 0), accept: [winCell]), board: drill4),
 
             TutorialStep(
-                caption: "É assim que se joga — você cercou a Rainha e venceu! Coloque peças, proteja sua própria Rainha e feche todos os seis lados da adversária.",
+                caption: "Parabéns! Você cercou a Rainha adversária e dominou todas as regras fundamentais do Hive.",
                 action: .narrate, board: nil, isFinal: true)
         ]
     }
@@ -253,7 +127,6 @@ private enum TutorialScript {
     // Stable ids referenced by the move steps.
     static let antID = 2
     static let winnerID = 7
-    // Per-bug drill IDs — each drill board assigns sequential IDs starting at 0.
     static let spiderDrillID = 3
     static let spiderDrillFrom = Hex(-2, 1)
     static let beetleDrillID = 2
@@ -270,7 +143,6 @@ private enum TutorialScript {
         return b
     }
 
-    /// Two opposing tiles; White has a Grasshopper to place. Teaches adjacency.
     private static func placementDrill() -> GameState {
         let b = make([(Hex(0, 0), .spider, .white), (Hex(1, 0), .spider, .black)])
         return GameState(board: b, current: .white,
@@ -278,7 +150,6 @@ private enum TutorialScript {
                          movesMade: [.white: 1, .black: 1])
     }
 
-    /// White has taken three turns without a Queen — she is now forced.
     private static func queenDrill() -> GameState {
         let b = make([
             (Hex(0, 0), .ant, .white),   (Hex(1, 0), .ant, .black),
@@ -290,100 +161,72 @@ private enum TutorialScript {
                          movesMade: [.white: 3, .black: 3])
     }
 
-    /// A tiny hive with White's Queen down and a White Ant free to slide (id 2).
     private static func moveDrill() -> GameState {
         let b = make([
-            (Hex(0, 0), .queen, .white),   // id 0
-            (Hex(1, 0), .queen, .black),   // id 1
-            (Hex(-1, 0), .ant, .white)     // id 2 — the ant that moves
+            (Hex(0, 0), .queen, .white),
+            (Hex(1, 0), .queen, .black),
+            (Hex(-1, 0), .ant, .white)
         ])
         return GameState(board: b, current: .white,
                          unplaced: [], movesMade: [.white: 2, .black: 2])
     }
 
-    // MARK: - Per-Bug Drills
-
-    /// Spider drill: White Spider (id 3) at (-2,1) must walk exactly 3 steps.
-    /// Board: a small L-shaped hive so the spider has a clear 3-step route.
-    ///   id 0: White Queen at (0,0)
-    ///   id 1: Black Queen at (1,0)
-    ///   id 2: Black Ant at (0,1)
-    ///   id 3: White Spider at (-2,1) — the piece to move
     private static func spiderDrill() -> GameState {
         let b = make([
-            (Hex(0, 0), .queen, .white),    // id 0
-            (Hex(1, 0), .queen, .black),    // id 1
-            (Hex(0, 1), .ant, .black),      // id 2
-            (Hex(-2, 1), .spider, .white),  // id 3 — spider to move
-            (Hex(-1, 0), .ant, .white),     // id 4
+            (Hex(0, 0), .queen, .white),
+            (Hex(1, 0), .queen, .black),
+            (Hex(0, 1), .ant, .black),
+            (Hex(-2, 1), .spider, .white),
+            (Hex(-1, 0), .ant, .white),
         ])
         return GameState(board: b, current: .white,
                          unplaced: [], movesMade: [.white: 3, .black: 2])
     }
 
-    /// Beetle drill: White Beetle (id 2) at (-1,0) climbs onto Black's piece at (0,0).
-    ///   id 0: White Queen at (0,-1)
-    ///   id 1: Black Queen at (1,-1)
-    ///   id 2: White Beetle at (-1,0) — the piece to move
-    ///   id 3: Black Ant at (0,0) — target to climb on
     private static func beetleDrill() -> GameState {
         let b = make([
-            (Hex(0, -1), .queen, .white),   // id 0
-            (Hex(1, -1), .queen, .black),   // id 1
-            (Hex(-1, 0), .beetle, .white),  // id 2 — beetle to move
-            (Hex(0, 0), .ant, .black),      // id 3 — piece to climb onto
+            (Hex(0, -1), .queen, .white),
+            (Hex(1, -1), .queen, .black),
+            (Hex(-1, 0), .beetle, .white),
+            (Hex(0, 0), .ant, .black),
         ])
         return GameState(board: b, current: .white,
                          unplaced: [], movesMade: [.white: 2, .black: 2])
     }
 
-    /// Ladybug drill: White Ladybug (id 4) at (-2,1) does up-over-down across the hive.
-    ///   id 0: White Queen at (0,0)
-    ///   id 1: Black Queen at (1,0)
-    ///   id 2: White Ant at (-1, 0)
-    ///   id 3: Black Beetle at (0,1)
-    ///   id 4: White Ladybug at (-2,1) — the piece to move
     private static func ladybugDrill() -> GameState {
         let b = make([
-            (Hex(0, 0), .queen, .white),     // id 0
-            (Hex(1, 0), .queen, .black),     // id 1
-            (Hex(-1, 0), .ant, .white),      // id 2
-            (Hex(0, 1), .beetle, .black),    // id 3
-            (Hex(-2, 1), .ladybug, .white),  // id 4 — ladybug to move
+            (Hex(0, 0), .queen, .white),
+            (Hex(1, 0), .queen, .black),
+            (Hex(-1, 0), .ant, .white),
+            (Hex(0, 1), .beetle, .black),
+            (Hex(-2, 1), .ladybug, .white),
         ])
         return GameState(board: b, current: .white,
                          unplaced: [], movesMade: [.white: 3, .black: 2])
     }
 
-    /// Mosquito drill: White Mosquito (id 3) at (-1,1) touches a White Ant,
-    /// so it can slide like an ant.
-    ///   id 0: White Queen at (0,0)
-    ///   id 1: Black Queen at (1,0)
-    ///   id 2: White Ant at (0,1)
-    ///   id 3: White Mosquito at (-1,1) — the piece to move
     private static func mosquitoDrill() -> GameState {
         let b = make([
-            (Hex(0, 0), .queen, .white),       // id 0
-            (Hex(1, 0), .queen, .black),       // id 1
-            (Hex(0, 1), .ant, .white),         // id 2
-            (Hex(-1, 1), .mosquito, .white),   // id 3 — mosquito to move
+            (Hex(0, 0), .queen, .white),
+            (Hex(1, 0), .queen, .black),
+            (Hex(0, 1), .ant, .white),
+            (Hex(-1, 1), .mosquito, .white),
         ])
         return GameState(board: b, current: .white,
                          unplaced: [], movesMade: [.white: 3, .black: 1])
     }
 
-    /// Black's Queen surrounded on five sides; White's Grasshopper (id 7) can
-    /// jump into the last gap at (-1,0) to win. Verified by the engine tests.
     private static func winDrill() -> GameState {
         let b = make([
-            (Hex(0, 0), .queen, .black),        // id 0
-            (Hex(1, 0), .ant, .black),          // id 1  (E)
-            (Hex(1, -1), .beetle, .white),      // id 2  (NE)
-            (Hex(0, -1), .spider, .black),      // id 3  (NW)
-            (Hex(-1, 1), .ant, .white),         // id 4  (SW)
-            (Hex(0, 1), .grasshopper, .black),  // id 5  (SE)
-            (Hex(1, 1), .queen, .white),        // id 6  — White Queen
-            (Hex(2, 0), .grasshopper, .white)   // id 7  — the winning mover
+            (Hex(0, 0), .queen, .black),
+            (Hex(1, 0), .ant, .black),
+            (Hex(1, -1), .beetle, .white),
+            (Hex(0, -1), .spider, .black),
+            (Hex(-1, 1), .ant, .white),
+            (Hex(0, 1), .grasshopper, .black),
+            (Hex(1, 1), .queen, .white),
+            (Hex(2, 0), .grasshopper, .white)
         ])
         return GameState(board: b, current: .white,
                          unplaced: [], movesMade: [.white: 5, .black: 5])
@@ -392,194 +235,277 @@ private enum TutorialScript {
 
 // MARK: - View
 
-/// Full-screen guided tutorial overlay: a small board the player acts on under a
-/// coach caption, with only the scripted move enabled at each step.
+/// Full-screen interactive guided tutorial.
+///
+/// Uses the real `BoardView` and `GameController` animation pipeline:
+/// - Reconstructs the exact step-by-step bug movement travel animations.
+/// - Full drag-and-drop from hand and board with ghost tiles and target snapping.
+/// - Press-and-hold on any piece opens `PieceMoveInfoOverlay` with animated diagrams.
+/// - Real-time haptic feedback and coaches invalid taps with standard toast pills.
 struct TutorialView: View {
-    @State private var controller = TutorialController()
     let onExit: () -> Void
     let onPlayGame: () -> Void
 
-    private var step: TutorialStep { controller.step }
+    @State private var game = GameController(options: .tutorial)
+    @State private var stepIndex = 0
+    @State private var inspectedPiece: Piece?
+    private let steps: [TutorialStep] = TutorialScript.build()
+
+    private var currentStep: TutorialStep {
+        steps[min(stepIndex, steps.count - 1)]
+    }
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [HiveTheme.bgTop, HiveTheme.bgBottom],
-                           startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
+            // Full interactive game board
+            BoardView(
+                game: game,
+                onInspectPiece: { inspectedPiece = $0 }
+            )
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
+                // Tutorial Header
                 header
-                boardArea
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 6)
+
+                Spacer()
+
+                // Toast pill feedback if player makes an invalid action
+                if let toast = game.toast {
+                    ToastPill(toast: toast)
+                        .id(toast.id)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, 8)
+                }
+
+                // Bottom Panel: Hand Chip + Coach Bubble + Controls
                 bottomPanel
             }
+
+            // Hold-to-inspect piece overlay with animated movement diagram
+            if let piece = inspectedPiece {
+                PieceMoveInfoOverlay(piece: piece, onDismiss: { inspectedPiece = nil })
+                    .transition(.opacity)
+                    .zIndex(20)
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: inspectedPiece)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: game.toast)
         .preferredColorScheme(.dark)
+        .onAppear {
+            loadStep(0)
+        }
     }
 
-    // MARK: Header
+    // MARK: - Step Management
+
+    private func loadStep(_ idx: Int) {
+        guard idx < steps.count else { return }
+        stepIndex = idx
+        let step = steps[idx]
+
+        let constraintKind: GameController.TutorialConstraint.Kind
+        switch step.action {
+        case .narrate:
+            constraintKind = .none
+        case let .place(bug, accept):
+            constraintKind = .place(bug: bug, targets: accept)
+        case let .move(pieceID, _, accept):
+            constraintKind = .move(pieceID: pieceID, targets: accept)
+        }
+
+        let targetBoard = step.board ?? game.state
+        game.loadTutorialState(targetBoard, constraint: constraintKind) {
+            // Completed step action!
+            Haptics.success()
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(700))
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    if stepIndex + 1 < steps.count {
+                        loadStep(stepIndex + 1)
+                    }
+                }
+            }
+        }
+    }
+
+    private func advanceNarration() {
+        guard case .narrate = currentStep.action, stepIndex + 1 < steps.count else { return }
+        withAnimation(.easeInOut(duration: 0.3)) {
+            loadStep(stepIndex + 1)
+        }
+    }
+
+    // MARK: - Header
 
     private var header: some View {
         HStack {
-            Label("Tutorial", systemImage: "graduationcap.fill")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-            Spacer()
-            Text("Passo \(controller.stepNumber) de \(controller.stepCount)")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button(action: onExit) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .frame(width: 34, height: 34)
-                    .background(.ultraThinMaterial, in: Circle())
+            HStack(spacing: 8) {
+                Image(systemName: "graduationcap.fill")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(HiveTheme.selection)
+                Text("Tutorial")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Capsule().fill(.ultraThinMaterial))
+            .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
+
+            Spacer()
+
+            Text("Passo \(stepIndex + 1) de \(steps.count)")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.8))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(.ultraThinMaterial))
+                .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
+
+            Spacer()
+
+            Button(action: onExit) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .frame(width: 40, height: 40)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .foregroundStyle(HiveTheme.danger)
+                    .overlay(Circle().stroke(HiveTheme.danger.opacity(0.3), lineWidth: 1))
+            }
             .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 8)
-    }
-
-    // MARK: Board
-
-    private var boardArea: some View {
-        GeometryReader { geo in
-            let fit = fit(in: geo.size)
-            let layout = HexLayout(size: fit.size)
-            let origin = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2) - fit.center
-            ZStack {
-                ForEach(renderedTiles, id: \.piece.id) { rt in
-                    TileView(piece: rt.piece, size: fit.size,
-                             selected: controller.isSelected(rt.piece.id) || rt.hint)
-                        .position(layout.point(for: rt.hex) + origin + rt.lift)
-                        .zIndex(rt.z)
-                        .allowsHitTesting(rt.isTop)
-                        .onTapGesture { controller.tapHex(rt.hex) }
-                        .transition(.scale(scale: 0.3).combined(with: .opacity))
-                }
-                ForEach(Array(controller.targets), id: \.self) { hex in
-                    if !controller.state.board.isOccupied(hex) {
-                        TutorialTarget(size: fit.size)
-                            .position(layout.point(for: hex) + origin)
-                            .zIndex(600)
-                            .onTapGesture { controller.tapHex(hex) }
-                            .transition(.opacity)
-                    }
-                }
-            }
-            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: controller.index)
-            .animation(.easeInOut(duration: 0.2), value: controller.targets)
+            .accessibilityLabel("Sair do tutorial")
         }
     }
 
-    /// Fit the occupied + target cells into ~80% of the board area, choosing a
-    /// hex size (tiles keep touching) and the centroid to centre on.
-    private func fit(in area: CGSize) -> (size: CGFloat, center: CGPoint) {
-        let cells = Set(controller.state.board.occupiedCells).union(controller.targets)
-        guard !cells.isEmpty, area != .zero else { return (28, .zero) }
-        let unit = HexLayout(size: 1)
-        let pts = cells.map { unit.point(for: $0) }
-        let minX = pts.map(\.x).min()!, maxX = pts.map(\.x).max()!
-        let minY = pts.map(\.y).min()!, maxY = pts.map(\.y).max()!
-        let boundsW = (maxX - minX) + sqrt(3.0)
-        let boundsH = (maxY - minY) + 2
-        let raw = min(area.width * 0.82 / boundsW, area.height * 0.82 / boundsH)
-        let size = min(max(raw, 16), 34)
-        return (size, CGPoint(x: (minX + maxX) / 2 * size, y: (minY + maxY) / 2 * size))
-    }
-
-    private var renderedTiles: [TutorialTile] {
-        let board = controller.state.board
-        let hintID = controller.step.hintPieceID
-        var out: [TutorialTile] = []
-        for hex in board.occupiedCells {
-            let stack = board.stack(hex)
-            for (level, piece) in stack.enumerated() {
-                let isTop = level == stack.count - 1
-                out.append(TutorialTile(
-                    piece: piece, hex: hex,
-                    lift: CGPoint(x: CGFloat(level) * 3, y: CGFloat(level) * -4),
-                    isTop: isTop,
-                    hint: isTop && piece.id == hintID && controller.selection == .none,
-                    z: Double(level) + (isTop ? 100 : 0)))
-            }
-        }
-        return out
-    }
-
-    // MARK: Bottom panel
+    // MARK: - Bottom Panel
 
     private var bottomPanel: some View {
-        VStack(spacing: 14) {
-            if let bug = step.hintBug {
-                handChip(bug)
+        VStack(spacing: 12) {
+            // Hand Chip if placing a piece
+            if let bug = currentStep.hintBug {
+                handPieceChip(bug)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            coachBubble
+
+            // Coach narrative card
+            coachCard
+
+            // Action buttons
             controls
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 14)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
     }
 
-    private func handChip(_ bug: Bug) -> some View {
-        VStack(spacing: 4) {
-            TileView(piece: Piece(id: -1, bug: bug, color: .white), size: 30,
-                     selected: controller.selection == .hand(bug))
-                .frame(width: 30 * sqrt(3) + 6, height: 60)
-                .scaleEffect(controller.selection == .hand(bug) ? 1.08 : 1)
+    // MARK: - Hand Piece Chip with Tap + Drag + Hold
+
+    private func handPieceChip(_ bug: Bug) -> some View {
+        let isSelected = game.selection == .hand(bug, .white)
+        let isDragging = isDraggingBug(bug)
+
+        return VStack(spacing: 4) {
+            ZStack {
+                TileView(
+                    piece: Piece(id: -1, bug: bug, color: .white),
+                    size: 34,
+                    selected: isSelected
+                )
+                .frame(width: 60, height: 68)
+                .scaleEffect(isSelected ? 1.08 : 1.0)
+                .opacity(isDragging ? 0.3 : 1.0)
                 .overlay {
-                    if controller.selection == .none {
+                    if game.selection == .none && !game.dragState.isDragging {
                         RegularHexagon()
                             .stroke(HiveTheme.selection, lineWidth: 3)
-                            .frame(width: 30 * sqrt(3), height: 60)
-                            .modifier(Pulse())
+                            .frame(width: 34 * sqrt(3), height: 68)
+                            .modifier(PulseModifier())
                     }
                 }
-                .onTapGesture { controller.tapHand(bug) }
-            Text(controller.selection == .hand(bug) ? "Agora toque em um espaço brilhante" : "Toque para pegar")
+            }
+            .onTapGesture {
+                game.selectHand(bug, .white)
+            }
+            .onLongPressGesture(minimumDuration: 0.4) {
+                Haptics.selection()
+                inspectedPiece = Piece(id: -1, bug: bug, color: .white)
+            }
+            .gesture(
+                DragGesture(minimumDistance: 12, coordinateSpace: .global)
+                    .onChanged { value in
+                        if !game.dragState.isDragging {
+                            game.beginDrag(.hand(bug, .white))
+                        }
+                        game.dragState.fingerPosition = value.location
+                    }
+                    .onEnded { _ in
+                        guard game.dragState.isDragging else { return }
+                        if let hex = game.dragState.hoveredHex,
+                           game.dragState.validTargets.contains(hex) {
+                            game.commitDrag(to: hex)
+                        } else {
+                            game.cancelDrag()
+                        }
+                    }
+            )
+
+            Text(isSelected ? "Arraste ou toque em um espaço destacado" : "Toque ou arraste para colocar")
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.85))
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: controller.selection)
+        .padding(.vertical, 4)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
 
-    private var coachBubble: some View {
+    private func isDraggingBug(_ bug: Bug) -> Bool {
+        if case let .hand(b, _) = game.dragState.source, b == bug { return true }
+        return false
+    }
+
+    // MARK: - Coach Narrative Card
+
+    private var coachCard: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "graduationcap.fill")
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(.black)
-                .frame(width: 38, height: 38)
+                .frame(width: 36, height: 36)
                 .background(HiveTheme.selection, in: Circle())
-            Text(step.caption)
-                .font(.system(size: 15, weight: .medium, design: .rounded))
+
+            Text(currentStep.caption)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
+        .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(.ultraThinMaterial)
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(.white.opacity(0.1), lineWidth: 1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.35), radius: 10, y: 3)
         )
-        .frame(maxWidth: 460)
+        .frame(maxWidth: 480)
     }
 
+    // MARK: - Controls
+
     @ViewBuilder private var controls: some View {
-        if step.isFinal {
+        if currentStep.isFinal {
             VStack(spacing: 10) {
                 bigButton("Jogar de Verdade", filled: true, action: onPlayGame)
-                bigButton("Concluir", filled: false, action: onExit)
+                bigButton("Voltar ao Início", filled: false, action: onExit)
             }
-            .frame(maxWidth: 460)
-        } else if case .narrate = step.action {
-            bigButton("Próximo", filled: true) { controller.next() }
-                .frame(maxWidth: 460)
+            .frame(maxWidth: 480)
+        } else if case .narrate = currentStep.action {
+            bigButton("Próximo", filled: true) { advanceNarration() }
+                .frame(maxWidth: 480)
         }
-        // Action steps have no button — completing the action advances.
     }
 
     private func bigButton(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
@@ -588,49 +514,49 @@ struct TutorialView: View {
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(filled ? HiveTheme.selection : Color.white.opacity(0.10)))
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(filled ? HiveTheme.selection : Color.white.opacity(0.10))
+                )
                 .foregroundStyle(filled ? .black : .white)
         }
         .buttonStyle(.plain)
     }
 }
 
-private struct TutorialTile {
-    let piece: Piece
-    let hex: Hex
-    let lift: CGPoint
-    let isTop: Bool
-    let hint: Bool
-    let z: Double
-}
+// MARK: - Toast Pill View helper for tutorial
 
-/// Pulsing destination marker (a self-contained twin of BoardView's private one).
-private struct TutorialTarget: View {
-    let size: CGFloat
-    @State private var pulse = false
+private struct ToastPill: View {
+    let toast: GameController.Toast
+
     var body: some View {
-        ZStack {
-            RegularHexagon().fill(HiveTheme.target.opacity(0.16))
-            Circle().fill(HiveTheme.target.opacity(0.9))
-                .frame(width: size * 0.5, height: size * 0.5)
-                .scaleEffect(pulse ? 1.15 : 0.85)
+        HStack(spacing: 7) {
+            if let icon = toast.icon {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(HiveTheme.selection)
+            }
+            Text(toast.text)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
         }
-        .frame(width: size * sqrt(3), height: size * 2)
-        .contentShape(RegularHexagon())
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.75).repeatForever(autoreverses: true)) { pulse = true }
-        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Capsule().fill(.ultraThinMaterial))
+        .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1))
+        .shadow(color: .black.opacity(0.3), radius: 8, y: 2)
     }
 }
 
-/// A gentle pulsing opacity, used on the "pick me up" hint ring.
-private struct Pulse: ViewModifier {
-    @State private var on = false
+private struct PulseModifier: ViewModifier {
+    @State private var isPulsing = false
+
     func body(content: Content) -> some View {
-        content.opacity(on ? 1 : 0.35)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) { on = true }
-            }
+        content
+            .scaleEffect(isPulsing ? 1.05 : 0.95)
+            .opacity(isPulsing ? 1.0 : 0.7)
+            .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: isPulsing)
+            .onAppear { isPulsing = true }
     }
 }
