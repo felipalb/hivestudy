@@ -199,6 +199,12 @@ The board is completely clean of floating side buttons.
   - **Dificuldade do Oponente (IA)**: Prominent segmented selector (`Fácil`,
     `Médio` as default, `Difícil`) that updates difficulty dynamically.
 
+### Interrupted Match Persistence & Clean Resume / Abandon
+- When an ongoing game has started tiles and the app is closed, `GamePersistence` caches the snapshot.
+- Upon reopening, `ResumeOverlay` asks if the player wants to:
+  - **"Continuar Jogo"**: Restores the board state immediately and enters the game screen (`currentScreen = .game`).
+  - **"Abandonar Jogo"**: Clears the saved game, resets cleanly without triggering coin flip animation (`showDrawAnimation: false`), and keeps the user on the **Home Screen** (`currentScreen = .home`).
+
 ### Drag & drop interaction (coexists with tap selection)
 Players can place and move pieces either by tap-to-select → tap-target OR by
 **direct drag & drop**:

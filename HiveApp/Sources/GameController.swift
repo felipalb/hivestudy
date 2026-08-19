@@ -344,17 +344,18 @@ final class GameController {
         autoPassIfHumanStuck()
     }
 
-    /// Discard the interrupted match and start fresh with its options.
+    /// Discard the interrupted match and return cleanly to home without coin toss.
     func discardResume() {
         let opts = pendingResume?.options ?? options
         pendingResume = nil
-        newGame(options: opts)
+        GamePersistence.clear()
+        newGame(options: opts, showDrawAnimation: false)
     }
 
-    /// Abandon the current match and return to a fresh, not-yet-started game with
-    /// the same options (so the setup sheet becomes editable again).
+    /// Abandon the current match and return cleanly without coin toss.
     func leaveMatch() {
-        newGame(options: options)
+        GamePersistence.clear()
+        newGame(options: options, showDrawAnimation: false)
     }
 
     /// Apply settings to the not-yet-started game. Ignored once play has begun —
