@@ -8,13 +8,13 @@ import HiveEngine
 struct GameMenuSheet: View {
     let game: GameController
     var onStartTutorial: () -> Void = {}
-    @State private var options: GameOptions
+    @State private var selectedDifficulty: HiveAI.Difficulty
     @Environment(\.dismiss) private var dismiss
 
     init(game: GameController, onStartTutorial: @escaping () -> Void = {}) {
         self.game = game
         self.onStartTutorial = onStartTutorial
-        _options = State(initialValue: game.options)
+        _selectedDifficulty = State(initialValue: UserPreferences.difficulty)
     }
 
     var body: some View {
@@ -39,7 +39,10 @@ struct GameMenuSheet: View {
         .presentationDetents([.medium, .large])
         .preferredColorScheme(.dark)
         .onDisappear {
-            game.options.difficulty = options.difficulty
+            UserPreferences.difficulty = selectedDifficulty
+            if game.currentCampaignLevel == nil {
+                game.options.difficulty = selectedDifficulty
+            }
         }
     }
 
@@ -96,13 +99,25 @@ struct GameMenuSheet: View {
     // MARK: - Settings Sections
 
     @ViewBuilder private var settingsSections: some View {
-        Section("Dificuldade do Oponente (IA)") {
-            Picker("Dificuldade", selection: $options.difficulty) {
-                ForEach(HiveAI.Difficulty.allCases.filter { $0 != .megaEasy }, id: \.self) { d in
-                    Text(d.displayLabel).tag(d)
-                }
+        Section {
+            Picker("Dificuldade", selection: $selectedDifficulty) {
+                Text("Fácil").tag(HiveAI.Difficulty.easy)
+                Text("Médio").tag(HiveAI.Difficulty.medium)
+                Text("Difícil").tag(HiveAI.Difficulty.hard)
             }
             .pickerStyle(.segmented)
+            .onChange(of: selectedDifficulty) { _, newValue in
+                UserPreferences.difficulty = newValue
+                if game.currentCampaignLevel == nil {
+                    game.options.difficulty = newValue
+                }
+            }
+        } header: {
+            Text("Dificuldade do Oponente (IA)")
+        } footer: {
+            Text("Define o nível dos bots nas partidas livres. O Tutorial e o Modo Campanha possuem dificuldade adaptativa própria com dicas ativas.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
         }
     }
 }

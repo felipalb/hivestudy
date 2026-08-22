@@ -80,8 +80,29 @@ struct BoardView: View {
 
     private func content(center: CGPoint) -> some View {
         ZStack {
+            // Subtle engraved honeycomb grid on the board surface
+            ForEach(Hex.gridCells(radius: 5), id: \.self) { hex in
+                RegularHexagon()
+                    .stroke(Color.white.opacity(0.028), lineWidth: 1)
+                    .frame(width: baseHexSize * sqrt(3), height: baseHexSize * 2)
+                    .position(layout.point(for: hex) + center)
+            }
+            .allowsHitTesting(false)
+
             ForEach(renderedTiles) { rt in
                 if !isHiddenByAnimation(rt) {
+                    // Contact occlusion shadow beneath stacked pieces (e.g. Beetle on top)
+                    if rt.level > 0 {
+                        RegularHexagon()
+                            .fill(Color.black.opacity(0.45))
+                            .frame(width: baseHexSize * sqrt(3) * 0.96, height: baseHexSize * 2 * 0.96)
+                            .blur(radius: 3.5)
+                            .offset(y: 3.5)
+                            .position(rt.position + center)
+                            .zIndex(rt.z - 0.5)
+                            .allowsHitTesting(false)
+                    }
+
                     TileView(piece: rt.piece,
                              size: baseHexSize,
                              selected: game.isSelected(pieceID: rt.piece.id),
@@ -92,8 +113,8 @@ struct BoardView: View {
                         .zIndex(rt.z)
                         .opacity(isDragSource(rt) ? 0.3 : 1)
                         .allowsHitTesting(rt.isTop)
-                        .onTapGesture { game.tapHex(rt.hex) }
-                        .onLongPressGesture(minimumDuration: 0.4) { inspect(rt.piece) }
+                        .onTapGesture(count: 2) { inspect(rt.piece) }
+                        .onTapGesture(count: 1) { game.tapHex(rt.hex) }
                         .gesture(tileDragGesture(rt))
                         .transition(tileTransition)
                         .accessibilityLabel(accessibilityLabel(for: rt))
@@ -128,7 +149,7 @@ struct BoardView: View {
                     HintMarker(size: baseHexSize)
                         .position(layout.point(for: to) + center)
                         .zIndex(600)
-                        .onTapGesture { game.playHint() }
+                        .onTapGesture { game.tapHex(to) }
                         .transition(.opacity)
                         .accessibilityLabel("Dica: jogar aqui")
                         .accessibilityAddTraits(.isButton)
@@ -368,13 +389,7 @@ struct BoardView: View {
     }
 
     private var background: some View {
-        LinearGradient(colors: [HiveTheme.bgTop, HiveTheme.bgBottom],
-                       startPoint: .top, endPoint: .bottom)
-            .overlay(
-                RadialGradient(colors: [.white.opacity(0.05), .clear],
-                               center: .center, startRadius: 0, endRadius: 420)
-            )
-            .ignoresSafeArea()
+        BoardAtmosphereView()
     }
 
     // MARK: Gestures
@@ -406,26 +421,17 @@ struct BoardView: View {
 
     // MARK: - Drag & Drop
 
-    /// A drag gesture on a board tile: requires a short hold (0.3s) so it
-    /// doesn't conflict with the immediate pan gesture. Fires `beginDrag` once,
-    /// then continuously updates the finger position for the ghost.
+    /// Direct drag gesture on a board tile: starts lifting as soon as the finger
+    /// moves 8 points, providing instant response without blocking taps.
     private func tileDragGesture(_ rt: RenderedTile) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.25)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+        DragGesture(minimumDistance: 8, coordinateSpace: .global)
             .onChanged { value in
-                switch value {
-                case .second(true, let dragValue):
-                    if !game.dragState.isDragging, rt.isTop {
-                        game.beginDrag(.board(pieceID: rt.piece.id, from: rt.hex))
-                    }
-                    if let dragValue {
-                        game.dragState.fingerPosition = dragValue.location
-                        // Update hovered hex from finger position
-                        let boardPt = globalToBoardHex(dragValue.location)
-                        game.dragState.hoveredHex = game.dragState.validTargets.contains(boardPt) ? boardPt : nil
-                    }
-                default: break
+                if !game.dragState.isDragging, rt.isTop {
+                    game.beginDrag(.board(pieceID: rt.piece.id, from: rt.hex))
                 }
+                game.dragState.fingerPosition = value.location
+                let boardPt = globalToBoardHex(value.location)
+                game.dragState.hoveredHex = game.dragState.validTargets.contains(boardPt) ? boardPt : nil
             }
             .onEnded { _ in
                 guard game.dragState.isDragging else { return }
@@ -549,6 +555,7 @@ struct BoardView: View {
                     piece: piece,
                     hex: hex,
                     position: base + lift,
+                    level: level,
                     isTop: isTop,
                     lastMoved: last,
                     isBeetleTarget: isTop && targets.contains(hex),
@@ -568,6 +575,7 @@ private struct RenderedTile: Identifiable {
     let piece: Piece
     let hex: Hex
     let position: CGPoint
+    let level: Int
     let isTop: Bool
     let lastMoved: Bool
     let isBeetleTarget: Bool

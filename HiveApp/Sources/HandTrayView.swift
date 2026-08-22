@@ -86,8 +86,12 @@ struct HandTrayView: View {
                     size: chipSize,
                     isDragging: isDraggingThisChip(entry.bug)
                 )
-                .onTapGesture { game.selectHand(entry.bug, color) }
-                .onLongPressGesture(minimumDuration: 0.4) { inspect(entry.bug) }
+                .onTapGesture(count: 2) {
+                    inspect(entry.bug)
+                }
+                .onTapGesture(count: 1) {
+                    game.selectHand(entry.bug, color)
+                }
                 .gesture(chipDragGesture(entry.bug))
                 .transition(chipTransition)
                 .accessibilityLabel(accessibilityLabel(for: entry))
@@ -101,7 +105,7 @@ struct HandTrayView: View {
     /// distance to distinguish from taps; fires `beginDrag` once, then
     /// continuously updates the finger position so the ghost follows the finger.
     private func chipDragGesture(_ bug: Bug) -> some Gesture {
-        DragGesture(minimumDistance: 12, coordinateSpace: .global)
+        DragGesture(minimumDistance: 8, coordinateSpace: .global)
             .onChanged { value in
                 if !game.dragState.isDragging {
                     guard isActive, isPlaceable(bug) else { return }
@@ -152,7 +156,7 @@ struct HandTrayView: View {
     }
 
     private func isSelected(_ bug: Bug) -> Bool {
-        if case let .hand(b, c) = game.selection { return b == bug && c == color }
+        if case let .hand(b, c) = game.selection, b == bug, c == color { return true }
         return false
     }
 
@@ -179,35 +183,36 @@ private struct HandChip: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TileView(piece: Piece(id: -1, bug: bug, color: color), size: size, selected: selected)
-            .frame(width: size * sqrt(3) + 6, height: size * 2)
-            .overlay { hintGlow }
-            .overlay(alignment: .topTrailing) {
-                if count > 1 {
-                    Text("\(count)")
-                        .font(.system(size: max(11, size * 0.36), weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 5).padding(.vertical, 1.5)
-                        .background(Capsule().fill(.black.opacity(0.8)))
-                        .overlay(Capsule().stroke(HiveTheme.selection.opacity(0.5), lineWidth: 1))
-                        .offset(x: 4, y: -2)
-                }
+        ZStack(alignment: .topTrailing) {
+            TileView(piece: Piece(id: -1, bug: bug, color: color), size: size, selected: selected)
+                .frame(width: size * sqrt(3) + 6, height: size * 2)
+                .overlay { hintGlow }
+
+            if count > 1 {
+                Text("\(count)")
+                    .font(.system(size: max(11, size * 0.36), weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5).padding(.vertical, 1.5)
+                    .background(Capsule().fill(.black.opacity(0.8)))
+                    .overlay(Capsule().stroke(HiveTheme.selection.opacity(0.5), lineWidth: 1))
+                    .offset(x: 4, y: -2)
             }
-            .opacity(isDragging ? 0.3 : (enabled ? 1 : 0.4))
-            .scaleEffect(selected ? 1.08 : 1)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selected)
-            .onChange(of: hinted) { _, isHinted in
-                guard isHinted, !reduceMotion else { glow = false; return }
-                withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                    glow = true
-                }
+        }
+        .opacity(isDragging ? 0.3 : (enabled ? 1 : 0.4))
+        .scaleEffect(selected ? 1.08 : 1)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selected)
+        .onChange(of: hinted) { _, isHinted in
+            guard isHinted, !reduceMotion else { glow = false; return }
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                glow = true
             }
-            .onAppear {
-                guard hinted, !reduceMotion else { return }
-                withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                    glow = true
-                }
+        }
+        .onAppear {
+            guard hinted, !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                glow = true
             }
+        }
     }
 
     /// Golden pulsing outline when the active hint wants to place this bug.

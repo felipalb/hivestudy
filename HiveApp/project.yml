@@ -9,6 +9,9 @@ options:
 packages:
   HiveEngine:
     path: ../HiveEngine
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    from: 11.0.0
 
 targets:
   Hive:
@@ -21,6 +24,10 @@ targets:
     dependencies:
       - package: HiveEngine
         product: HiveEngine
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hivestudy.Hive

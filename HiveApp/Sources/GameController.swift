@@ -22,9 +22,16 @@ enum AnimationPhase: Equatable {
 
 /// Options chosen when starting a game. `Codable` so a match can be cached.
 struct GameOptions: Equatable, Codable {
-    enum Mode: String, CaseIterable, Identifiable, Codable { case vsAI, twoPlayer
+    enum Mode: String, CaseIterable, Identifiable, Codable {
+        case vsAI, twoPlayer, online
         var id: String { rawValue }
-        var label: String { self == .vsAI ? "Vs. Computador" : "Dois Jogadores" }
+        var label: String {
+            switch self {
+            case .vsAI: return "Vs. Computador"
+            case .twoPlayer: return "Dois Jogadores"
+            case .online: return "Multiplayer Online"
+            }
+        }
     }
     enum ColorChoice: String, CaseIterable, Identifiable, Codable {
         case random = "random"
@@ -181,7 +188,7 @@ final class GameController {
         #endif
     }
 
-    init(options: GameOptions = GameOptions()) {
+    init(options: GameOptions = UserPreferences.defaultOptions()) {
         var opts = options
         if opts.mode == .vsAI && opts.colorChoice == .random {
             opts.humanColor = Bool.random() ? .white : .black
@@ -239,38 +246,81 @@ final class GameController {
     var hasStarted: Bool { state.board.tileCount > 0 }
 
     func humanControls(_ color: PlayerColor) -> Bool {
-        options.mode == .twoPlayer || color != options.aiColor
+        switch options.mode {
+        case .twoPlayer:
+            return true
+        case .vsAI:
+            return color != options.aiColor
+        case .online:
+            return color == options.humanColor
+        }
     }
 
     var statusText: String {
         switch state.result {
         case .win(let c):
-            if options.mode == .vsAI {
+            if options.mode == .vsAI || options.mode == .online {
                 return c == options.humanColor ? "Você venceu! 🎉" : "Oponente venceu!"
             }
             return "\(c == .white ? "Brancas" : "Pretas") vencem!"
         case .draw: return "Empate"
         case .ongoing:
             if isThinking { return "Computador pensando…" }
-            if options.mode == .vsAI {
-                if current == options.humanColor {
-                    if state.mustPlaceQueen { return "Sua vez: posicione sua Rainha" }
-                    return "Sua vez"
-                } else {
-                    return "Vez do oponente"
-                }
+            if options.mode == .vsAI || options.mode == .online {
+                return current == options.humanColor ? "Seu turno" : "Turno do oponente"
             } else {
-                let who = current == .white ? "Brancas" : "Pretas"
-                if state.mustPlaceQueen { return "\(who): posicione sua Rainha" }
-                return "Vez das \(who)"
+                return "Turno das \(current == .white ? "Brancas" : "Pretas")"
             }
         }
+    }
+
+    // MARK: - Campaign Support
+
+    private(set) var currentCampaignLevel: CampaignLevel? = nil
+    private(set) var activeHint: HiveAI.HintSuggestion? = nil
+
+    /// Starts a campaign match with the given level constraints and AI difficulty.
+    func startCampaign(level: CampaignLevel) {
+        currentCampaignLevel = level
+        activeHint = nil
+        var opts = GameOptions()
+        opts.mode = .vsAI
+        opts.colorChoice = .white
+        opts.humanColor = .white
+        opts.difficulty = level.botDifficulty
+
+        self.options = opts
+        self.state = level.createInitialState()
+        self.history.removeAll()
+        self.selection = .none
+        self.targets = []
+        self.hint = nil
+        self.isThinking = false
+        self.pendingResume = nil
+        self.toast = nil
+        self.toastTask?.cancel()
+        self.lastToastText = nil
+        self.rejection = nil
+        self.didCoachTargetTap = false
+        self.dragState.reset()
+        self.animationPhase = .none
+        self.animationProgress = 0
+        self.tutorialConstraint = TutorialConstraint(kind: .none)
+        self.pendingColorDraw = nil
+        GamePersistence.clear()
+        self.recenterBoard()
     }
 
     // MARK: New game / undo
 
     func newGame(options: GameOptions? = nil, showDrawAnimation: Bool = true) {
-        if let options { self.options = options }
+        currentCampaignLevel = nil
+        activeHint = nil
+        if let options {
+            self.options = options
+        } else {
+            self.options = UserPreferences.defaultOptions()
+        }
 
         if self.options.mode == .vsAI {
             switch self.options.colorChoice {
@@ -365,6 +415,67 @@ final class GameController {
         newGame(options: newOptions)
     }
 
+    // MARK: - Online Match Support
+
+    private(set) var activeOnlineMatch: OnlineMatch? = nil
+
+    /// Starts an active multiplayer online match.
+    func startOnlineMatch(_ match: OnlineMatch, localColor: PlayerColor) {
+        self.activeOnlineMatch = match
+        var opts = GameOptions()
+        opts.mode = .online
+        opts.humanColor = localColor
+        opts.tournamentOpening = match.config.tournamentOpening
+        self.options = opts
+
+        self.state = GameState(config: match.config)
+        self.history = []
+        self.targets = []
+        self.selection = .none
+        self.dragState.reset()
+        self.animationPhase = .none
+        self.animationProgress = 0
+        self.pendingResume = nil
+        self.currentCampaignLevel = nil
+        self.hint = nil
+        self.activeHint = nil
+        self.pendingColorDraw = match.moves.isEmpty ? localColor : nil
+        self.recenterBoard()
+
+        // Fast-forward any moves that were already in the match document
+        for record in match.moves {
+            self.history.append(self.state)
+            self.state.apply(record.move)
+        }
+    }
+
+    /// Syncs real-time match state updates from Firestore.
+    func syncOnlineMatch(_ match: OnlineMatch) {
+        self.activeOnlineMatch = match
+        guard options.mode == .online else { return }
+
+        // Check if the opponent abandoned the match
+        if match.status == .abandoned {
+            let myUID = AuthService.shared.currentUserID
+            if match.abandonedByPlayerID != myUID {
+                self.state.declareWin(for: options.humanColor)
+                return
+            }
+        }
+
+        // Check if there are new opponent moves that we haven't played locally yet
+        let localMoveCount = history.count
+        if match.moves.count > localMoveCount {
+            let newMoves = match.moves[localMoveCount...]
+            for record in newMoves {
+                if record.playerColor != options.humanColor {
+                    // Play opponent move with smooth animation
+                    self.commit(record.move, isOpponentOnlineMove: true)
+                }
+            }
+        }
+    }
+
     // MARK: - Tutorial Mode Support
 
     /// Constraints applied during a guided tutorial drill.
@@ -410,14 +521,16 @@ final class GameController {
             // Tapped a tray that can't act right now — say why instead of
             // doing nothing (a silent no-op reads as a broken app).
             let message: String
-            if options.mode == .vsAI && color == options.aiColor {
+            if options.mode == .online {
+                message = current == options.humanColor ? "Agora é o seu turno" : "Aguarde o turno do oponente"
+            } else if options.mode == .vsAI && color == options.aiColor {
                 message = "Essas peças são do computador"
             } else if isThinking {
                 message = "Aguarde: o computador está jogando"
             } else if options.mode == .vsAI {
-                message = current == options.humanColor ? "Agora é a sua vez" : "Aguarde a vez do oponente"
+                message = current == options.humanColor ? "Agora é o seu turno" : "Aguarde o turno do oponente"
             } else {
-                message = "Agora é a vez das \(current == .white ? "Brancas" : "Pretas")"
+                message = "Agora é o turno das \(current == .white ? "Brancas" : "Pretas")"
             }
             Haptics.error()
             showToast(message, icon: "hourglass")
@@ -479,9 +592,17 @@ final class GameController {
             if top.color == current, humanControls(top.color) {
                 selectBoardPiece(id: top.id, at: hex)
             } else {
-                // An opponent tile: the single most common "why isn't this
-                // working?" tap. Shake it, buzz, and explain.
-                rejectTap(at: hex, message: "Essa peça é do oponente")
+                let message: String
+                if options.mode == .online || options.mode == .vsAI {
+                    if top.color != options.humanColor {
+                        message = "Essa peça é do oponente"
+                    } else {
+                        message = "Aguarde o turno do oponente para jogar"
+                    }
+                } else {
+                    message = "Agora é o turno das \(current == .white ? "Brancas" : "Pretas")"
+                }
+                rejectTap(at: hex, message: message)
             }
             return
         }
@@ -662,24 +783,19 @@ final class GameController {
         guard !isThinking, !isComputingHint, hint == nil,
               state.result == .ongoing, humanControls(current) else { return }
 
-        isComputingHint = true
-        let snapshot = state
-        Task { [weak self] in
-            let move = await Self.computeAIMove(for: snapshot, difficulty: .hard, timeLimit: 1.5)
-            guard let self else { return }
-            self.isComputingHint = false
-            // Position moved on (or a hint already shows) — discard the stale result.
-            guard self.state == snapshot, self.hint == nil else { return }
-            guard let move, move != .pass else { return }
-            self.clearSelection()
+        if let suggestion = HiveAI.suggestHint(for: state) {
+            clearSelection()
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                self.hint = move
+                self.hint = suggestion.move
+                self.activeHint = suggestion
             }
             Haptics.light()
+            showToast("💡 \(suggestion.explanation)", icon: "lightbulb.fill")
         }
     }
 
     func dismissHint() {
+        activeHint = nil
         guard hint != nil else { return }
         withAnimation(.easeInOut(duration: 0.2)) { hint = nil }
     }
@@ -724,35 +840,60 @@ final class GameController {
 
     // MARK: Applying moves
 
-    private func commit(_ move: Move, animated: Bool = true) {
+    func commit(_ move: Move, animated: Bool = true, isOpponentOnlineMove: Bool = false) {
         // Guard against input during animation
         guard animationPhase == .none else { return }
 
+        let movingPlayer = state.current
         history.append(state)
         clearSelection()
         hint = nil                     // a move was made — the suggestion is spent
         toastTask?.cancel()
         toast = nil                    // the player acted — any coaching is spent
 
+        let onMoveFinished: (GameController) -> Void = { controller in
+            controller.state.apply(move)
+            controller.animationPhase = .none
+            controller.animationProgress = 0
+            if controller.state.result != .ongoing { controller.announceEnd() }
+            controller.persist()
+
+            // If local player in an online match made a move, submit to Firestore
+            if controller.options.mode == .online && !isOpponentOnlineMove && movingPlayer == controller.options.humanColor {
+                Task {
+                    try? await OnlineGameService.shared.submitMove(move)
+                    if controller.state.result != .ongoing {
+                        let winner: PlayerColor? = {
+                            if case .win(let w) = controller.state.result { return w }
+                            return nil
+                        }()
+                        let isDraw = controller.state.result == .draw
+                        try? await OnlineGameService.shared.finalizeMatch(winner: winner, isDraw: isDraw)
+                    }
+                }
+            }
+
+            if let onCompleted = controller.tutorialConstraint.onCompleted {
+                onCompleted()
+            } else {
+                controller.scheduleAIIfNeeded()
+                controller.autoPassIfHumanStuck()
+            }
+        }
+
         if animated && !reduceMotion {
             startAnimation(for: move, in: state) { [weak self] in
                 guard let self else { return }
-                self.state.apply(move)
-                self.animationPhase = .none
-                self.animationProgress = 0
-                if self.state.result != .ongoing { self.announceEnd() }
-                self.persist()
-                if let onCompleted = self.tutorialConstraint.onCompleted {
-                    onCompleted()
-                } else {
-                    self.scheduleAIIfNeeded()
-                    self.autoPassIfHumanStuck()
-                }
+                onMoveFinished(self)
             }
         } else {
-            applyPlain(move)
-            if let onCompleted = tutorialConstraint.onCompleted {
-                onCompleted()
+            impact(.light)
+            let animation: Animation? = reduceMotion
+                ? .easeInOut(duration: 0.2)
+                : .spring(response: 0.42, dampingFraction: 0.78)
+            withAnimation(animation) { [weak self] in
+                guard let self else { return }
+                onMoveFinished(self)
             }
         }
     }
@@ -880,7 +1021,15 @@ final class GameController {
 
         isThinking = true
         let snapshot = state
-        let difficulty = options.difficulty
+        // RULE: In Campaign and Tutorial, gameplay is ALWAYS driven by the didactic/peaceful engine (.didactic),
+        // completely decoupled from the user's settings difficulty. In regular matches, the user's saved difficulty is used.
+        let difficulty: HiveAI.Difficulty
+        if currentCampaignLevel != nil || tutorialConstraint.kind != .none {
+            difficulty = .didactic
+        } else {
+            difficulty = options.difficulty
+        }
+
         Task { [weak self] in
             let move = await Self.computeAIMove(for: snapshot, difficulty: difficulty)
             // A short beat so the "thinking" state is visible and moves feel deliberate.
@@ -951,9 +1100,13 @@ final class GameController {
     private func announceEnd() {
         clearSelection()
         switch state.result {
-        case .win:
+        case let .win(winner):
             notify(.success)
             Haptics.victory()
+            if winner == options.humanColor, let level = currentCampaignLevel {
+                let moves = state.movesMade[options.humanColor] ?? 0
+                CampaignPersistence.complete(levelID: level.id, turns: moves, parTurns: level.targetParTurns)
+            }
         case .draw: notify(.warning)
         case .ongoing: break
         }

@@ -4,6 +4,7 @@ import HiveEngine
 enum AppScreen {
     case home
     case game
+    case onlineLobby
 }
 
 struct ContentView: View {
@@ -13,7 +14,7 @@ struct ContentView: View {
     @State private var showLeaveConfirm = false
     @State private var showOnboarding = !OnboardingState.hasSeenTutorial
     @State private var showTutorial = false
-    /// The board piece the player is pressing-and-holding to inspect; non-nil
+    /// The board piece the player is inspecting; non-nil
     /// while the movement-explanation modal is up.
     @State private var inspectedPiece: Piece?
     @Environment(\.scenePhase) private var scenePhase
@@ -28,11 +29,30 @@ struct ContentView: View {
                         }
                         game.newGame(showDrawAnimation: true)
                     },
+                    onPlayOnline: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            currentScreen = .onlineLobby
+                        }
+                    },
                     onPlayTutorial: {
                         showTutorial = true
                     },
                     onOpenSettings: {
                         showMenu = true
+                    }
+                )
+                .transition(.opacity)
+            } else if currentScreen == .onlineLobby {
+                OnlineLobbyView(
+                    onBack: {
+                        withAnimation { currentScreen = .home }
+                    },
+                    onMatchStarted: {
+                        if let match = OnlineGameService.shared.activeMatch,
+                           let localColor = OnlineGameService.shared.localPlayerColor {
+                            game.startOnlineMatch(match, localColor: localColor)
+                            withAnimation { currentScreen = .game }
+                        }
                     }
                 )
                 .transition(.opacity)
@@ -76,8 +96,8 @@ struct ContentView: View {
                     onExit: { showTutorial = false },
                     onPlayGame: {
                         showTutorial = false
+                        game.startCampaign(level: CampaignLevel.allLevels[0])
                         withAnimation { currentScreen = .game }
-                        game.newGame(showDrawAnimation: true)
                     }
                 )
                 .transition(.opacity)
@@ -113,6 +133,22 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { game.persistNow() }
         }
+        // Real-time synchronization for online matches
+        .onChange(of: OnlineGameService.shared.activeMatch?.moves.count) { _, _ in
+            if let match = OnlineGameService.shared.activeMatch {
+                game.syncOnlineMatch(match)
+            }
+        }
+        .onChange(of: OnlineGameService.shared.activeMatch?.status) { _, _ in
+            if let match = OnlineGameService.shared.activeMatch {
+                game.syncOnlineMatch(match)
+            }
+        }
+        .onChange(of: OnlineGameService.shared.opponentAbandoned) { _, abandoned in
+            if abandoned, let match = OnlineGameService.shared.activeMatch {
+                game.syncOnlineMatch(match)
+            }
+        }
     }
 
     // MARK: - Game View
@@ -124,7 +160,15 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                topBar
+                if game.currentCampaignLevel == nil {
+                    topBar
+                }
+
+                if let level = game.currentCampaignLevel {
+                    CampaignMissionBanner(level: level, game: game)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
                 Spacer()
                 // Short-lived coaching/error messages — the app's answer to
                 // taps that didn't do what the player expected.
@@ -147,12 +191,20 @@ struct ContentView: View {
             if game.result != .ongoing {
                 GameOverOverlay(
                     game: game,
-                    onPlayAgain: { game.newGame() },
+                    onPlayAgain: {
+                        if let level = game.currentCampaignLevel {
+                            game.startCampaign(level: level)
+                        } else {
+                            game.newGame()
+                        }
+                    },
                     onGoHome: {
                         game.leaveMatch()
                         withAnimation { currentScreen = .home }
                     },
-                    onChangeSetup: { showMenu = true }
+                    onNextCampaignLevel: { nextLevel in
+                        game.startCampaign(level: nextLevel)
+                    }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
                 .zIndex(10)
@@ -162,6 +214,9 @@ struct ContentView: View {
             if showLeaveConfirm {
                 LeaveConfirmOverlay(
                     onLeave: {
+                        if game.options.mode == .online {
+                            OnlineGameService.shared.leaveMatch()
+                        }
                         game.leaveMatch()
                         showLeaveConfirm = false
                         withAnimation { currentScreen = .home }
@@ -172,7 +227,7 @@ struct ContentView: View {
                 .zIndex(20)
             }
 
-            // Opened by press-and-holding a tile on the board: a focused card
+            // Opened by double-tapping a tile: a focused card
             // explaining just that piece's movement.
             if let piece = inspectedPiece {
                 PieceMoveInfoOverlay(piece: piece, onDismiss: { inspectedPiece = nil })
@@ -186,10 +241,43 @@ struct ContentView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            // Invisible placeholder so status pill remains perfectly centered
-            Circle()
-                .frame(width: 44, height: 44)
-                .opacity(0)
+            if game.options.mode == .online {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 8, height: 8)
+                    Text("ONLINE")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .tracking(1.0)
+                        .foregroundStyle(HiveTheme.selection)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(Capsule().fill(.ultraThinMaterial))
+            } else if game.currentCampaignLevel != nil || game.options.difficulty == .didactic {
+                Button {
+                    game.requestHint()
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(HiveTheme.selection)
+                        Text("Dica")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().stroke(HiveTheme.selection.opacity(0.4), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Pedir dica ao Mestre")
+            } else {
+                Circle()
+                    .frame(width: 44, height: 44)
+                    .opacity(0)
+            }
             Spacer(minLength: 8)
             statusPill
             Spacer(minLength: 8)
@@ -197,6 +285,9 @@ struct ContentView: View {
                 if game.hasStarted {
                     showLeaveConfirm = true
                 } else {
+                    if game.options.mode == .online {
+                        OnlineGameService.shared.leaveMatch()
+                    }
                     game.leaveMatch()
                     withAnimation { currentScreen = .home }
                 }
@@ -218,14 +309,10 @@ struct ContentView: View {
             Text(game.statusText)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
-                // Crossfade whenever the message changes (turn passes, the AI
-                // starts/stops thinking, the queen becomes mandatory) instead of
-                // snapping — makes the flow of play readable at a glance.
                 .contentTransition(.opacity)
                 .animation(.easeInOut(duration: 0.25), value: game.statusText)
-            surroundBadges
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .padding(.vertical, 9)
         .background(Capsule().fill(.ultraThinMaterial))
         .overlay(Capsule().stroke(.white.opacity(0.1), lineWidth: 1))
@@ -233,63 +320,28 @@ struct ContentView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Tiny "sides of each queen filled" indicators — the core tension of Hive.
-    private var surroundBadges: some View {
-        HStack(spacing: 6) {
-            ForEach(PlayerColor.allCases, id: \.self) { color in
-                let count = game.state.queenSurroundCount(color)
-                if game.state.queenHex(color) != nil {
-                    HStack(spacing: 2) {
-                        Image(systemName: "hexagon.fill")
-                            .font(.system(size: 9))
-                            .foregroundStyle(count >= 5 ? HiveTheme.danger : HiveTheme.tileBorder(color))
-                        Text("\(count)/6")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(count >= 5 ? HiveTheme.danger : .secondary)
-                    }
-                    .animation(.easeInOut(duration: 0.3), value: count)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(
-                        "Rainha \(color == .white ? "branca" : "preta") com \(count) de 6 lados cercados"
-                    )
-                }
-            }
-        }
-    }
-
-    private func circleButton(_ symbol: String, label: String, enabled: Bool = true, tint: Color = .white, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 17, weight: .semibold))
-                .frame(width: 44, height: 44)
-                .background(.ultraThinMaterial, in: Circle())
-                .foregroundStyle(tint)
-                .overlay(
-                    Circle()
-                        .stroke(tint == .white ? Color.white.opacity(0.1) : tint.opacity(0.4), lineWidth: 1)
-                )
-        }
-        .buttonStyle(.plain)
-        .opacity(enabled ? 1 : 0.35)
-        .disabled(!enabled)
-        .accessibilityLabel(label)
-    }
-
-    // MARK: Trays
+    // MARK: Hand trays
 
     private var trays: some View {
-        let playerColor = game.options.mode == .vsAI ? game.options.humanColor : game.current
+        let playerColor: PlayerColor = {
+            switch game.options.mode {
+            case .vsAI, .online:
+                return game.options.humanColor
+            case .twoPlayer:
+                return game.current
+            }
+        }()
         return HandTrayView(game: game, color: playerColor, onInspectPiece: { inspectedPiece = $0 })
             .padding(.bottom, 6)
     }
 
     /// Sits just above the hand trays while a board piece is picked up, nudging
-    /// the player to press-and-hold for that piece's movement rules.
+    /// the player that contextual info is accessible via double-tap.
     private var selectionHint: some View {
         HStack(spacing: 6) {
             Image(systemName: "hand.tap.fill")
                 .font(.system(size: 12, weight: .semibold))
-            Text("Segure para ver o movimento da peça")
+            Text("Toque 2x em uma peça para ver seu movimento")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
         }
         .foregroundStyle(.white.opacity(0.9))
@@ -298,6 +350,19 @@ struct ContentView: View {
         .background(Capsule().fill(.ultraThinMaterial))
         .overlay(Capsule().stroke(.white.opacity(0.12), lineWidth: 1))
         .padding(.bottom, 10)
+    }
+
+    private func circleButton(_ icon: String, label: String, tint: Color = .white, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(.ultraThinMaterial))
+                .overlay(Circle().stroke(.white.opacity(0.1), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 
@@ -350,67 +415,93 @@ private struct ThinkingDots: View {
                 }
             }
             .frame(width: 30, height: 16)
-            .accessibilityHidden(true)   // the status text already says "thinking"
+            .accessibilityHidden(true)
         }
     }
 }
 
-/// Result card shown when a queen is surrounded (or a draw).
+// MARK: - Overlays
+
+/// Presented when the game reaches a terminal state (win or draw).
 private struct GameOverOverlay: View {
     let game: GameController
     let onPlayAgain: () -> Void
     let onGoHome: () -> Void
-    let onChangeSetup: () -> Void
+    let onNextCampaignLevel: (CampaignLevel) -> Void
 
     @State private var appeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea()
-                .onTapGesture { }   // swallow taps
-
-            // Victory particles (only on win, not draw, and only when the
-            // player hasn't asked the system to tone motion down).
-            if case .win = game.result, !reduceMotion {
-                VictoryParticles()
-                    .allowsHitTesting(false)
-            }
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
 
             VStack(spacing: 18) {
                 Image(systemName: iconName)
-                    .font(.system(size: 48, weight: .bold))
+                    .font(.system(size: 48, weight: .semibold))
                     .foregroundStyle(iconColor)
-                    .scaleEffect(appeared ? 1.0 : 0.3)
+                    .scaleEffect(appeared ? 1.0 : 0.4)
                     .opacity(appeared ? 1.0 : 0.0)
+
                 Text(title)
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
                     .offset(y: appeared ? 0 : 20)
                     .opacity(appeared ? 1.0 : 0.0)
+
+                if let level = game.currentCampaignLevel, case .win = game.result {
+                    let stars = CampaignPersistence.earnedStars[level.id] ?? 3
+                    HStack(spacing: 6) {
+                        ForEach(1...3, id: \.self) { s in
+                            Image(systemName: s <= stars ? "star.fill" : "star")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundStyle(s <= stars ? Color(red: 1.0, green: 0.82, blue: 0.28) : Color.white.opacity(0.25))
+                        }
+                    }
+                    .scaleEffect(appeared ? 1.0 : 0.5)
+                    .opacity(appeared ? 1.0 : 0.0)
+                }
+
                 Text(subtitle)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .opacity(appeared ? 1.0 : 0.0)
 
                 VStack(spacing: 10) {
-                    bigButton("Jogar Novamente", filled: true, action: onPlayAgain)
-                        .opacity(appeared ? 1.0 : 0.0)
-                    bigButton("Voltar ao Início", filled: false, action: onGoHome)
-                        .opacity(appeared ? 1.0 : 0.0)
+                    if game.options.mode == .online {
+                        bigButton("Voltar ao Menu Principal", filled: true, action: onGoHome)
+                    } else if let level = game.currentCampaignLevel {
+                        if case .win = game.result {
+                            if level.id < CampaignLevel.allLevels.count {
+                                let nextLevel = CampaignLevel.allLevels[level.id]
+                                bigButton("Próximo Capítulo", filled: true) {
+                                    onNextCampaignLevel(nextLevel)
+                                }
+                            }
+                            bigButton("Voltar ao Início", filled: false, action: onGoHome)
+                        } else {
+                            bigButton("Tentar Novamente", filled: true, action: onPlayAgain)
+                            bigButton("Voltar ao Início", filled: false, action: onGoHome)
+                        }
+                    } else {
+                        bigButton("Jogar Novamente", filled: true, action: onPlayAgain)
+                        bigButton("Voltar ao Início", filled: false, action: onGoHome)
+                    }
                 }
+                .opacity(appeared ? 1.0 : 0.0)
             }
-            .padding(28)
+            .padding(26)
             .frame(maxWidth: 340)
             .background(overlayCard)
-            .padding(30)
+            .padding(24)
             .scaleEffect(appeared ? 1.0 : 0.92)
             .opacity(appeared ? 1.0 : 0.0)
         }
         .onAppear {
-            // Stagger animation for each element — or show everything at once
-            // when Reduce Motion is on (no scaling/sliding entrance).
             if reduceMotion {
                 appeared = true
             } else {
@@ -422,7 +513,13 @@ private struct GameOverOverlay: View {
     private var title: String {
         switch game.result {
         case .win(let c):
-            if game.options.mode == .vsAI {
+            if game.options.mode == .online && OnlineGameService.shared.opponentAbandoned {
+                return "Vitória por Abandono! 🎉"
+            }
+            if let level = game.currentCampaignLevel {
+                return c == game.options.humanColor ? "Capítulo \(level.chapterNumber) Concluído! 🎉" : "Tente Novamente"
+            }
+            if game.options.mode == .vsAI || game.options.mode == .online {
                 return c == game.options.humanColor ? "Você Venceu! 🎉" : "Oponente Venceu"
             }
             return "\(c == .white ? "Brancas" : "Pretas") Vencem"
@@ -430,17 +527,30 @@ private struct GameOverOverlay: View {
         case .ongoing: return ""
         }
     }
+
     private var subtitle: String {
         switch game.result {
-        case .win: return "A Rainha está completamente cercada."
+        case .win(let c):
+            if game.options.mode == .online && OnlineGameService.shared.opponentAbandoned {
+                return "O oponente deixou a partida. Você venceu!"
+            }
+            if let level = game.currentCampaignLevel {
+                return c == game.options.humanColor ? "Você dominou as peças de \(level.title) e superou o desafio!" : level.tip
+            }
+            return "A Rainha está completamente cercada."
         case .draw: return "Ambas as Rainhas foram cercadas ao mesmo tempo."
         case .ongoing: return ""
         }
     }
+
     private var iconName: String {
         if case .draw = game.result { return "equal.circle.fill" }
+        if let _ = game.currentCampaignLevel, case .win(let c) = game.result, c != game.options.humanColor {
+            return "arrow.triangle.2.circlepath"
+        }
         return "crown.fill"
     }
+
     private var iconColor: Color {
         if case .draw = game.result { return .secondary }
         return HiveTheme.accent(.queen)
@@ -449,9 +559,9 @@ private struct GameOverOverlay: View {
     private func bigButton(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
+                .padding(.vertical, 12)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(filled ? HiveTheme.selection : Color.white.opacity(0.10))
@@ -709,5 +819,110 @@ private struct VictoryParticles: View {
         }
         path.closeSubpath()
         return path
+    }
+}
+
+// MARK: - Campaign Mission & Coaching Banner
+
+struct CampaignMissionBanner: View {
+    let level: CampaignLevel
+    @Bindable var game: GameController
+    @State private var isCollapsed: Bool = false
+
+    var body: some View {
+        VStack(spacing: 8) {
+            // Header: Chapter number + title + toggle arrow
+            HStack(spacing: 8) {
+                Image(systemName: "flag.checkered.circle.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(HiveTheme.selection)
+
+                Text("CAPÍTULO \(level.chapterNumber): \(level.title.uppercased())")
+                    .font(.system(size: 11, weight: .heavy, design: .rounded))
+                    .tracking(1.2)
+                    .foregroundStyle(HiveTheme.selection)
+
+                Spacer()
+
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        isCollapsed.toggle()
+                    }
+                } label: {
+                    Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(width: 24, height: 24)
+                        .background(Circle().fill(Color.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
+            }
+
+            if !isCollapsed {
+                // Goal description
+                Text(level.narrative)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .lineSpacing(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Tactical coaching (shown only when the player asks to reveal the hint)
+                if let hint = game.activeHint, game.hint != nil {
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("💡")
+                            .font(.system(size: 15))
+                            .padding(.top, 1)
+
+                        Text(hint.explanation)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .lineSpacing(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.black.opacity(0.4)))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(HiveTheme.selection.opacity(0.3), lineWidth: 1))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
+                // Hint reveal / hide button
+                Button {
+                    Haptics.selection()
+                    if game.hint != nil {
+                        game.dismissHint()
+                    } else {
+                        game.requestHint()
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: game.hint != nil ? "eye.slash.fill" : "lightbulb.fill")
+                            .font(.system(size: 13, weight: .bold))
+                        Text(game.hint != nil ? "Ocultar dica de jogada" : "Ver dica de jogada")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(game.hint != nil ? Color.white.opacity(0.12) : HiveTheme.selection)
+                    )
+                    .foregroundStyle(game.hint != nil ? .white : .black)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(HiveTheme.selection.opacity(0.4), lineWidth: 1.5)
+                )
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+        )
+        .padding(.horizontal, 4)
+        .padding(.top, 4)
     }
 }

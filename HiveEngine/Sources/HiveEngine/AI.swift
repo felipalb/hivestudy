@@ -17,17 +17,15 @@ import Foundation
 public enum HiveAI {
 
     public enum Difficulty: String, CaseIterable, Sendable, Codable {
-        /// A deliberately very weak, very forgiving tier for the in-app tutorial
-        /// bot — not offered in the normal difficulty picker (see
-        /// `GameMenuSheet`). Still takes an immediate win and still defends a
-        /// queen in real danger (that safety net in `bestMove` applies to every
-        /// tier), so a match still resolves properly; it just blunders often
-        /// enough in the quiet midgame that a total beginner can win.
+        /// An ultra-forgiving, didactic mode for tutorial and early campaign chapters.
+        /// Plays gently and allows the learner to experiment and find winning moves.
+        case didactic
         case megaEasy
         case easy, medium, hard
 
         public var displayLabel: String {
             switch self {
+            case .didactic: return "Didático"
             case .megaEasy: return "Muito Fácil"
             case .easy: return "Fácil"
             case .medium: return "Médio"
@@ -37,7 +35,7 @@ public enum HiveAI {
 
         var searchDepth: Int {
             switch self {
-            case .megaEasy: return 1
+            case .didactic, .megaEasy: return 1
             case .easy: return 1
             case .medium: return 2
             case .hard: return 4
@@ -45,9 +43,10 @@ public enum HiveAI {
         }
 
         /// Chance of playing a non-optimal move in a *non-critical* position, to
-        /// stay beatable. Never applied when a queen is under threat.
+        /// stay beatable. Never applied when a queen is under threat (except didactic).
         var blunderChance: Double {
             switch self {
+            case .didactic: return 0.85
             case .megaEasy: return 0.6
             case .easy: return 0.25
             case .medium: return 0.0
@@ -72,20 +71,53 @@ public enum HiveAI {
 
         let me = state.current
 
-        // 1) Never stall on a kill: if any move ends the game in our favour, play
-        //    it immediately (this also short-circuits the blunder roll below).
+        // 1) In Didactic mode, the AI is a gentle pedagogical sparring partner.
+        // It NEVER attacks ruthlessly, never takes instant kills against a learner,
+        // never blocks a learner's puzzle solution, and chooses calm, passive moves.
+        if difficulty == .didactic {
+            let myQueenHex = state.board.occupiedCells.first { state.board.topPiece($0)?.bug == .queen && state.board.topPiece($0)?.color == me }
+            let myQueenNeighbors = Set(myQueenHex?.neighbors ?? [])
+            let oppQueenHex = state.board.occupiedCells.first { state.board.topPiece($0)?.bug == .queen && state.board.topPiece($0)?.color == me.opponent }
+            let oppQueenNeighbors = Set(oppQueenHex?.neighbors ?? [])
+
+            let peacefulMoves = moves.filter { m in
+                let next = state.applying(m)
+                // Avoid increasing surround on the human player's queen
+                if next.queenSurroundCount(me.opponent) > state.queenSurroundCount(me.opponent) { return false }
+
+                // In tactical scenarios, don't move into or place in any open neighbor of the opponent's queen
+                if case let .move(_, from, to) = m {
+                    if oppQueenNeighbors.contains(to) { return false }
+                    if myQueenNeighbors.contains(from) { return false }
+                    if myQueenNeighbors.contains(to) { return false }
+                }
+                if case let .place(_, hex) = m {
+                    if oppQueenNeighbors.contains(hex) { return false }
+                }
+                return true
+            }
+            if let safeMove = peacefulMoves.randomElement(using: &rng) {
+                return safeMove
+            }
+            return .pass
+        }
+
+        // 2) Never stall on a kill for competitive difficulties (easy, medium, hard):
         for move in moves where state.applying(move).result == .win(me) {
             return move
         }
 
-        // 2) Occasional deliberate blunder on lower difficulties — but only when
-        //    neither queen is in danger, so the AI still fights to win/defend at
-        //    the moments that decide the game.
-        let critical = state.queenSurroundCount(me.opponent) >= 4
-                    || state.queenSurroundCount(me) >= 4
-        if difficulty.blunderChance > 0, !critical,
-           Double.random(in: 0..<1, using: &rng) < difficulty.blunderChance {
-            return moves.randomElement(using: &rng)
+        // 3) Deliberate blunder on lower difficulties (megaEasy, easy)
+        if difficulty == .megaEasy {
+            if Double.random(in: 0..<1, using: &rng) < 0.85 {
+                return moves.randomElement(using: &rng)
+            }
+        } else if difficulty.blunderChance > 0 {
+            let critical = state.queenSurroundCount(me.opponent) >= 4
+                        || state.queenSurroundCount(me) >= 4
+            if !critical && Double.random(in: 0..<1, using: &rng) < difficulty.blunderChance {
+                return moves.randomElement(using: &rng)
+            }
         }
 
         let ordered = orderMoves(moves, state: state)
@@ -232,5 +264,78 @@ public enum HiveAI {
             return -target.distance(to: q)
         }
         return moves.sorted { key($0) > key($1) }
+    }
+
+    // MARK: - Pedagogical Hint Suggestions
+
+    public struct HintSuggestion: Sendable, Equatable {
+        public let move: Move
+        public let explanation: String
+        public let piece: Piece?
+        public let targetHex: Hex?
+
+        public init(move: Move, explanation: String, piece: Piece?, targetHex: Hex?) {
+            self.move = move
+            self.explanation = explanation
+            self.piece = piece
+            self.targetHex = targetHex
+        }
+    }
+
+    /// Evaluates the board and generates an optimal or pedagogical move with an explanation in Portuguese.
+    public static func suggestHint(for state: GameState) -> HintSuggestion? {
+        guard state.result == .ongoing else { return nil }
+        var rng = SystemRandomNumberGenerator()
+        guard let move = bestMove(for: state, difficulty: .hard, timeLimit: 0.5, rng: &rng) else {
+            return nil
+        }
+
+        let me = state.current
+        let enemyQueenSurround = state.queenSurroundCount(me.opponent)
+        let myQueenSurround = state.queenSurroundCount(me)
+
+        var explanation = ""
+        var piece: Piece?
+        var targetHex: Hex?
+
+        switch move {
+        case let .place(bug, hex):
+            targetHex = hex
+            piece = Piece(id: -1, bug: bug, color: me)
+            if bug == .queen {
+                explanation = "Coloque sua Rainha agora para liberar a movimentação de todas as outras peças no tabuleiro."
+            } else if enemyQueenSurround >= 4 {
+                explanation = "Coloque uma peça de apoio para reforçar o cerco à Rainha adversária."
+            } else {
+                explanation = "Coloque um \(bug.displayName) para expandir suas opções de ataque e posicionamento na colmeia."
+            }
+
+        case let .move(_, from, to):
+            let p = state.board.topPiece(from)
+            piece = p
+            targetHex = to
+            let bugName = p?.bug.displayName ?? "inseto"
+            let child = state.applying(move)
+            if case .win = child.result {
+                explanation = "Mova seu \(bugName) para fechar o último lado da Rainha adversária e vencer a partida!"
+            } else if child.queenSurroundCount(me.opponent) > enemyQueenSurround {
+                explanation = "Mova seu \(bugName) para ocupar um dos lados abertos da Rainha inimiga e apertar o cerco."
+            } else if myQueenSurround >= 4 && child.queenSurroundCount(me) <= myQueenSurround {
+                explanation = "Mova seu \(bugName) para proteger a sua Rainha e neutralizar a ameaça adversária."
+            } else if p?.bug == .beetle && state.board.isOccupied(to) {
+                explanation = "Suba seu Besouro sobre a peça inimiga para imobilizá-la e assumir o controle do espaço."
+            } else if p?.bug == .ant {
+                explanation = "Aproveite a velocidade da Formiga para navegar pelo perímetro e se posicionar estrategicamente."
+            } else if p?.bug == .grasshopper {
+                explanation = "Pule sobre a linha de peças com seu Gafanhoto para alcançar a casa de destino."
+            } else {
+                explanation = "Mova seu \(bugName) até a casa destacada para obter vantagem posicional na colmeia."
+            }
+
+        case .pass:
+            explanation = "Não há movimentos legais possíveis neste turno. Passe a vez."
+        }
+
+        return HintSuggestion(move: move, explanation: explanation, piece: piece, targetHex: targetHex)
     }
 }

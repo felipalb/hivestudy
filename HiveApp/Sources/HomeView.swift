@@ -13,10 +13,11 @@ import UIKit
 /// - Title: H I V E branding with elegant typography.
 /// - 3 Main Action Buttons:
 ///   1. "Jogar contra bots" -> triggers 3D coin toss and starts game against AI.
-///   2. "Online" -> placeholder with "Em breve" badge.
+///   2. "Online" -> triggers online mode.
 ///   3. "Jogar tutorial" -> launches guided interactive tutorial.
 struct HomeView: View {
     let onPlayBots: () -> Void
+    let onPlayOnline: () -> Void
     let onPlayTutorial: () -> Void
     let onOpenSettings: () -> Void
 
@@ -45,7 +46,7 @@ struct HomeView: View {
                     .padding(.top, 4)
                     .padding(.bottom, 20)
 
-                // Action Buttons
+                // Action Buttons (3 Clean Buttons)
                 actionButtons
                     .padding(.horizontal, 22)
                     .padding(.bottom, 24)
@@ -174,8 +175,8 @@ struct HomeView: View {
             }
             .buttonStyle(ScaleBounceButtonStyle())
 
-            // 2. Online (Em breve)
-            Button(action: triggerOnlineNotice) {
+            // 2. Online Multiplayer
+            Button(action: onPlayOnline) {
                 HStack(spacing: 14) {
                     ZStack {
                         Circle()
@@ -183,28 +184,23 @@ struct HomeView: View {
                             .frame(width: 42, height: 42)
                         Image(systemName: "globe")
                             .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(HiveTheme.selection)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Online")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
-                        Text("Partidas multiplayer")
+                        Text("Partidas multiplayer e salas")
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundStyle(.secondary)
                     }
 
                     Spacer()
 
-                    Text("EM BREVE")
-                        .font(.system(size: 10, weight: .black, design: .rounded))
-                        .tracking(0.6)
-                        .foregroundStyle(HiveTheme.selection)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(HiveTheme.selection.opacity(0.15)))
-                        .overlay(Capsule().stroke(HiveTheme.selection.opacity(0.3), lineWidth: 1))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.5))
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 13)
@@ -258,18 +254,6 @@ struct HomeView: View {
                 )
             }
             .buttonStyle(ScaleBounceButtonStyle())
-        }
-    }
-
-    private func triggerOnlineNotice() {
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        #endif
-        showOnlineToast = true
-        toastTask?.cancel()
-        toastTask = Task {
-            try? await Task.sleep(for: .seconds(2.5))
-            showOnlineToast = false
         }
     }
 

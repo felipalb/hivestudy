@@ -38,3 +38,53 @@ enum GamePersistence {
         defaults.removeObject(forKey: key)
     }
 }
+
+/// Persistent player preferences for game setup and difficulty.
+enum UserPreferences {
+    private static let defaults = UserDefaults.standard
+    private static let difficultyKey = "hive.preference.difficulty"
+    private static let tournamentKey = "hive.preference.tournament"
+    private static let colorChoiceKey = "hive.preference.colorChoice"
+
+    /// The player's configured difficulty for regular matches (Fácil, Médio, Difícil).
+    /// Tutorial and Campaign ignore this setting and ALWAYS use the didactic/peaceful engine.
+    static var difficulty: HiveAI.Difficulty {
+        get {
+            guard let raw = defaults.string(forKey: difficultyKey),
+                  let diff = HiveAI.Difficulty(rawValue: raw),
+                  diff == .easy || diff == .medium || diff == .hard
+            else { return .medium }
+            return diff
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: difficultyKey)
+        }
+    }
+
+    static var tournamentOpening: Bool {
+        get { defaults.bool(forKey: tournamentKey) }
+        set { defaults.set(newValue, forKey: tournamentKey) }
+    }
+
+    static var colorChoice: GameOptions.ColorChoice {
+        get {
+            guard let raw = defaults.string(forKey: colorChoiceKey),
+                  let choice = GameOptions.ColorChoice(rawValue: raw)
+            else { return .random }
+            return choice
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: colorChoiceKey)
+        }
+    }
+
+    /// Returns a GameOptions struct populated with the player's saved preferences.
+    static func defaultOptions() -> GameOptions {
+        var opts = GameOptions()
+        opts.mode = .vsAI
+        opts.difficulty = difficulty
+        opts.tournamentOpening = tournamentOpening
+        opts.colorChoice = colorChoice
+        return opts
+    }
+}

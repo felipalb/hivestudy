@@ -58,9 +58,21 @@ public struct Hex: Hashable, Sendable, Codable {
 
     /// Hex distance (number of steps between two cells).
     public func distance(to other: Hex) -> Int {
-        let dq = q - other.q
-        let dr = r - other.r
-        return (abs(dq) + abs(dr) + abs(dq + dr)) / 2
+        let diff = self - other
+        return (abs(diff.q) + abs(diff.r) + abs(diff.q + diff.r)) / 2
+    }
+
+    /// All coordinates in a hexagonal grid region up to `radius` steps from origin.
+    public static func gridCells(radius: Int) -> [Hex] {
+        var cells: [Hex] = []
+        for q in -radius...radius {
+            let r1 = max(-radius, -q - radius)
+            let r2 = min(radius, -q + radius)
+            for r in r1...r2 {
+                cells.append(Hex(q, r))
+            }
+        }
+        return cells
     }
 }
 

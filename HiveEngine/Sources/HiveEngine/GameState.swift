@@ -58,6 +58,28 @@ public struct GameState: Sendable, Equatable, Codable {
         self.unplaced = pieces
     }
 
+    /// Initializes a game state with a customized set of starting pieces (used for Campaign mode / reduced roster).
+    public init(customRoster: [RosterEntry], config: GameConfig = .base) {
+        self.board = Board()
+        self.current = .white
+        self.movesMade = [.white: 0, .black: 0]
+        self.result = .ongoing
+        self.config = config
+        self.lastMove = nil
+
+        var pieces: [Piece] = []
+        var nextID = 0
+        for color in [PlayerColor.white, .black] {
+            for entry in customRoster {
+                for _ in 0..<entry.count {
+                    pieces.append(Piece(id: nextID, bug: entry.bug, color: color))
+                    nextID += 1
+                }
+            }
+        }
+        self.unplaced = pieces
+    }
+
     // MARK: Derived state
 
     /// The turn number the current player is about to play (1-based).
@@ -160,6 +182,11 @@ public struct GameState: Sendable, Equatable, Codable {
         case (false, true): return .win(.white)
         case (false, false): return .ongoing
         }
+    }
+
+    /// Explicitly awards a win (e.g. opponent concession or abandonment).
+    public mutating func declareWin(for winner: PlayerColor) {
+        self.result = .win(winner)
     }
 }
 
