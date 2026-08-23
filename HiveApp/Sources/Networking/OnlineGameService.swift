@@ -67,7 +67,7 @@ final class OnlineGameService {
                     playerBlackID: hostIsWhite ? myUID : opponentUID,
                     status: .active,
                     moves: [],
-                    config: GameConfig(tournamentOpening: tournamentOpening)
+                    config: GameConfig(tournamentOpening: tournamentOpening, expansions: [.mosquito, .ladybug])
                 )
 
                 // Save match document
@@ -159,7 +159,7 @@ final class OnlineGameService {
             playerBlackID: hostIsWhite ? nil : myUID,
             status: .waitingForOpponent,
             moves: [],
-            config: GameConfig(tournamentOpening: tournamentOpening)
+            config: GameConfig(tournamentOpening: tournamentOpening, expansions: [.mosquito, .ladybug])
         )
 
         do {

@@ -37,28 +37,28 @@ public enum Bug: String, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .queen: return "Rainha"
-        case .beetle: return "Besouro"
-        case .grasshopper: return "Gafanhoto"
-        case .spider: return "Aranha"
-        case .ant: return "Formiga Soldado"
-        case .mosquito: return "Mosquito"
-        case .ladybug: return "Joaninha"
-        case .pillbug: return "Percevejo"
+        case .queen: return "Leão"
+        case .beetle: return "Gorila"
+        case .grasshopper: return "Canguru"
+        case .spider: return "Zebra"
+        case .ant: return "Guepardo"
+        case .mosquito: return "Camaleão"
+        case .ladybug: return "Águia"
+        case .pillbug: return "Tatu-bola"
         }
     }
 
     /// Single-letter tag (legacy; the UI now labels tiles with `tileName`).
     public var letter: String {
         switch self {
-        case .queen: return "Q"
-        case .beetle: return "B"
-        case .grasshopper: return "G"
-        case .spider: return "S"
-        case .ant: return "A"
-        case .mosquito: return "M"
-        case .ladybug: return "L"
-        case .pillbug: return "P"
+        case .queen: return "L"
+        case .beetle: return "GO"
+        case .grasshopper: return "C"
+        case .spider: return "Z"
+        case .ant: return "G"
+        case .mosquito: return "CM"
+        case .ladybug: return "A"
+        case .pillbug: return "T"
         }
     }
 
@@ -66,14 +66,14 @@ public enum Bug: String, Codable, Sendable, CaseIterable {
     /// name, not by initial). Concise enough to fit a hexagon at small sizes.
     public var tileName: String {
         switch self {
-        case .queen: return "Rainha"
-        case .beetle: return "Besouro"
-        case .grasshopper: return "Gafanhoto"
-        case .spider: return "Aranha"
-        case .ant: return "Formiga"
-        case .mosquito: return "Mosquito"
-        case .ladybug: return "Joaninha"
-        case .pillbug: return "Percevejo"
+        case .queen: return "Leão"
+        case .beetle: return "Gorila"
+        case .grasshopper: return "Canguru"
+        case .spider: return "Zebra"
+        case .ant: return "Guepardo"
+        case .mosquito: return "Camaleão"
+        case .ladybug: return "Águia"
+        case .pillbug: return "Tatu"
         }
     }
 }

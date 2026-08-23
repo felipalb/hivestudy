@@ -69,7 +69,7 @@ struct CampaignView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text("A JORNADA DA COLMEIA")
+                Text("JORNADA HULI")
                     .font(.system(size: 12, weight: .heavy, design: .rounded))
                     .tracking(2)
                     .foregroundStyle(HiveTheme.selection)

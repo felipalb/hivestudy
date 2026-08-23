@@ -537,8 +537,8 @@ private struct GameOverOverlay: View {
             if let level = game.currentCampaignLevel {
                 return c == game.options.humanColor ? "Você dominou as peças de \(level.title) e superou o desafio!" : level.tip
             }
-            return "A Rainha está completamente cercada."
-        case .draw: return "Ambas as Rainhas foram cercadas ao mesmo tempo."
+            return "O Leão está completamente cercado."
+        case .draw: return "Ambos os Leões foram cercados ao mesmo tempo."
         case .ongoing: return ""
         }
     }

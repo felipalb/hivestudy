@@ -572,7 +572,7 @@ final class GameController {
         if targets.isEmpty {
             if state.mustPlaceQueen && bug != .queen {
                 Haptics.error()
-                showToast("Você precisa posicionar sua Rainha primeiro", icon: "crown.fill")
+                showToast("Você precisa posicionar seu Leão primeiro", icon: "crown.fill")
             }
         } else {
             coachTargetTap()

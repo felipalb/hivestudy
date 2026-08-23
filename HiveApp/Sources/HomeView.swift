@@ -102,7 +102,7 @@ struct HomeView: View {
 
     private var titleSection: some View {
         VStack(spacing: 4) {
-            Text("H I V E")
+            Text("H U L I")
                 .font(.system(size: 38, weight: .black, design: .rounded))
                 .tracking(8)
                 .foregroundStyle(

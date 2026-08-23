@@ -197,7 +197,7 @@ struct OnlineLobbyView: View {
                     Text("Abertura de Torneio")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.9))
-                    Text("Proíbe colocar a Rainha no primeiro turno")
+                    Text("Proíbe colocar o Leão no primeiro turno")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.5))
                 }

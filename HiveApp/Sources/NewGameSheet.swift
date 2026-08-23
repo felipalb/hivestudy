@@ -127,25 +127,25 @@ struct GameMenuSheet: View {
 struct RulesView: View {
     /// Shared with `OnboardingOverlay`'s "The Tiles" page.
     static let bugs: [(Bug, String)] = [
-        (.queen, "Move um espaço. Perde quando todos os seis lados estão cobertos."),
-        (.beetle, "Move um espaço e pode subir no topo da colmeia, imobilizando a peça abaixo."),
+        (.queen, "Move um espaço. Perde quando todos os seus seis lados estão cercados."),
+        (.beetle, "Move um espaço e pode subir no topo da formação, imobilizando a peça abaixo."),
         (.grasshopper, "Pula em linha reta sobre uma ou mais peças até a primeira célula vazia."),
-        (.spider, "Move exatamente três espaços ao redor da colmeia, sem retroceder."),
-        (.ant, "Move qualquer número de espaços ao redor da colmeia."),
-        (.mosquito, "Copia o movimento de qualquer inseto que tocar. No topo da colmeia, só se move como Besouro."),
-        (.ladybug, "Move exatamente três espaços: dois pelo topo da colmeia, depois um de volta para uma célula vazia.")
+        (.spider, "Move exatamente três espaços ao redor da formação, sem retroceder."),
+        (.ant, "Move qualquer número de espaços ao redor da formação."),
+        (.mosquito, "Copia o movimento de qualquer criatura que tocar. No topo da formação, só se move como Gorila."),
+        (.ladybug, "Move exatamente três espaços: dois pelo topo da formação, depois um descendo em uma célula vazia.")
     ]
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                section("Objetivo", "Cerque completamente a Rainha do oponente — todos os seis lados cobertos por peças de qualquer cor. Se ambas as Rainhas forem cercadas ao mesmo tempo, é empate.")
+                section("Objetivo", "Cerque completamente o Leão do oponente — todos os seis lados cobertos por peças de qualquer cor. Se ambos os Leões forem cercados ao mesmo tempo, é empate.")
 
                 section("Turnos", "A cada turno, coloque uma nova peça da sua mão ou mova uma peça já em jogo. Novas peças devem tocar sua própria cor e nunca tocar a do oponente (exceto as peças iniciais).")
 
-                section("A Rainha", "Sua Rainha deve ser colocada até o quarto turno, e nenhuma peça pode ser movida até que ela esteja no tabuleiro.")
+                section("O Leão", "Seu Leão deve ser colocado até o quarto turno, e nenhuma peça pode ser movida até que ele esteja no campo.")
 
-                section("Uma Colmeia", "A colmeia deve permanecer conectada o tempo todo. Uma peça que dividiria a colmeia ao ser levantada não pode se mover. As peças deslizam — não podem passar por uma abertura bloqueada dos dois lados.")
+                section("Formação Unificada", "O campo deve permanecer conectado o tempo todo. Uma peça que dividiria a formação ao ser levantada não pode se mover. As peças deslizam — não podem passar por uma abertura bloqueada dos dois lados.")
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("As Peças")

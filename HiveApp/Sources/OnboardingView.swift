@@ -72,14 +72,14 @@ struct OnboardingOverlay: View {
 
     private var welcomePage: some View {
         pageBody(icon: "hexagon.fill",
-                 title: "Bem-vindo ao Hive",
-                 text: "Cerque a Rainha do oponente antes que ele cerque a sua. Sem tabuleiro, sem dados — apenas as peças.")
+                 title: "Bem-vindo ao Huli",
+                 text: "Cerque o Leão do oponente antes que ele cerque o seu. Sem tabuleiro, sem dados — apenas as criaturas e sua estratégia.")
     }
 
     private var goalPage: some View {
         pageBody(icon: "target",
                  title: "O Objetivo",
-                 text: "Cerque completamente a Rainha do oponente — todos os seis lados cobertos por peças de qualquer cor. Se ambas as Rainhas forem cercadas ao mesmo tempo, é empate.")
+                 text: "Cerque completamente o Leão do oponente — todos os seis lados cobertos por peças de qualquer cor. Se ambos os Leões forem cercados ao mesmo tempo, é empate.")
     }
 
     private var turnsPage: some View {
@@ -90,14 +90,14 @@ struct OnboardingOverlay: View {
 
     private var queenPage: some View {
         pageBody(icon: "crown.fill",
-                 title: "A Rainha",
-                 text: "Sua Rainha deve ser colocada até o quarto turno, e nenhuma peça pode ser movida até que ela esteja no tabuleiro.")
+                 title: "O Leão",
+                 text: "Seu Leão deve ser colocado até o quarto turno, e nenhuma peça pode ser movida até que ele esteja no campo.")
     }
 
     private var oneHivePage: some View {
         pageBody(icon: "link",
-                 title: "Uma Colmeia",
-                 text: "A colmeia deve permanecer conectada o tempo todo. Uma peça que dividiria a colmeia ao ser levantada não pode se mover. As peças deslizam — não podem passar por uma abertura bloqueada dos dois lados.")
+                 title: "Formação Unificada",
+                 text: "O campo deve permanecer conectado o tempo todo. Uma peça que dividiria a formação ao ser levantada não pode se mover. As peças deslizam — não podem passar por uma abertura bloqueada dos dois lados.")
     }
 
     private var tilesPage: some View {
@@ -135,15 +135,15 @@ struct OnboardingOverlay: View {
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                 tip("clock.fill",
-                    "Não apresse sua Rainha para onde ela possa ser cercada facilmente — mas não adie além do quarto turno.")
+                    "Não apresse seu Leão para onde ele possa ser cercado facilmente — mas não adie além do quarto turno.")
                 tip("arrow.up.and.down.circle.fill",
-                    "Um Besouro no topo de uma peça imobiliza o que estiver abaixo. Suba um em um defensor chave para congelá-lo.")
+                    "Um Gorila no topo de uma peça imobiliza o que estiver abaixo. Suba um em um defensor chave para congelá-lo.")
                 tip("arrow.triangle.branch",
-                    "O Mosquito copia o movimento de qualquer inseto que tocar — e quando sobe na colmeia, só pode se mover como Besouro.")
+                    "O Camaleão copia o movimento de qualquer criatura que tocar — e quando sobe na formação, só pode se mover como Gorila.")
                 tip("point.topleft.down.curvedto.point.bottomright.up",
-                    "A Formiga pode deslizar por qualquer lado externo da colmeia. É sua peça mais versátil — vale a pena guardar para finalizar um cerco.")
+                    "O Guepardo pode deslizar por qualquer lado externo da formação. É sua peça mais versátil — vale a pena guardar para finalizar um cerco.")
                 tip("hexagon",
-                    "Continue contando os lados: observe os lados abertos da sua Rainha tanto quanto os da do oponente.")
+                    "Continue contando os lados: observe os lados abertos do seu Leão tanto quanto os do oponente.")
             }
             .padding(.horizontal, 22)
             .padding(.top, 4)

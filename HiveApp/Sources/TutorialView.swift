@@ -55,70 +55,70 @@ private enum TutorialScript {
         return [
             // 1. Placement Rule
             TutorialStep(
-                caption: "No Hive não há tabuleiro fixo — as próprias peças criam o campo. Novas peças devem tocar as suas e nunca as do oponente. Toque ou arraste a Formiga da sua mão para um espaço destacado.",
+                caption: "No Huli não há tabuleiro fixo — as próprias peças criam o campo. Novas peças devem tocar as suas e nunca as do oponente. Toque ou arraste o Guepardo da sua mão para um espaço destacado.",
                 action: .place(bug: .ant, accept: placeCells1),
                 board: drill1
             ),
 
             // 2. Queen Rule & Goal
             TutorialStep(
-                caption: "O objetivo supremo é cercar a Rainha adversária em todos os 6 lados! Sua Rainha deve entrar até o 4º turno para liberar a movimentação das suas peças. Coloque sua Rainha agora!",
+                caption: "O objetivo supremo é cercar o Leão adversário em todos os 6 lados! Seu Leão deve entrar até o 4º turno para liberar a movimentação das suas peças. Coloque seu Leão agora!",
                 action: .place(bug: .queen, accept: placeCells2),
                 board: drill2
             ),
 
             // 3. Ant (Unlimited perimeter slide)
             TutorialStep(
-                caption: "Com a Rainha em jogo, o movimento está liberado! A Formiga Soldado desliza por qualquer distância ao redor do contorno da colmeia. Mova sua Formiga para uma das posições destacadas.",
+                caption: "Com o Leão em jogo, o movimento está liberado! O Guepardo desliza por qualquer distância ao redor do contorno da formação. Mova seu Guepardo para uma das posições destacadas.",
                 action: .move(pieceID: antID, from: Hex(-1, 0), accept: antTargets),
                 board: drill3
             ),
 
             // 4. Spider (Exactly 3 steps)
             TutorialStep(
-                caption: "A Aranha também desliza pelo contorno, mas anda sempre exatamente 3 passos — nem mais, nem menos. Mova sua Aranha até o destino destacado.",
+                caption: "A Zebra também desliza pelo contorno, mas anda sempre exatamente 3 passos — nem mais, nem menos. Mova sua Zebra até o destino destacado.",
                 action: .move(pieceID: spiderDrillID, from: spiderDrillFrom, accept: spiderTargets),
                 board: drillSpider
             ),
 
             // 5. Beetle (Climbing & Pinning)
             TutorialStep(
-                caption: "O Besouro anda 1 passo e tem um poder único: pode subir no topo de qualquer peça, imobilizando-a. Suba seu Besouro em cima da peça preta para travá-la!",
+                caption: "O Gorila anda 1 passo e tem um poder único: pode subir no topo de qualquer peça, imobilizando-a. Suba seu Gorila em cima da peça preta para travá-la!",
                 action: .move(pieceID: beetleDrillID, from: beetleDrillFrom, accept: beetleTargets),
                 board: drillBeetle
             ),
 
             // 6. Grasshopper (Line jump)
             TutorialStep(
-                caption: "O Gafanhoto não desliza pelo contorno: ele salta em linha reta sobre as peças até o primeiro espaço livre. Salte com seu Gafanhoto sobre a linha de peças!",
+                caption: "O Canguru não desliza pelo contorno: ele salta em linha reta sobre as peças até o primeiro espaço livre. Salte com seu Canguru sobre a linha de peças!",
                 action: .move(pieceID: grasshopperDrillID, from: grasshopperDrillFrom, accept: grasshopperTargets),
                 board: drillGrasshopper
             ),
 
             // 7. Ladybug (Climb 2, drop 1)
             TutorialStep(
-                caption: "A Joaninha move 3 espaços: sobe 2 casas pelo topo da colmeia e desce em uma casa vazia. Mova sua Joaninha para se infiltrar no espaço interno!",
+                caption: "A Águia move 3 espaços: voa 2 casas pelo topo da formação e pousa em uma casa vazia. Mova sua Águia para se infiltrar no espaço interno!",
                 action: .move(pieceID: ladybugDrillID, from: ladybugDrillFrom, accept: ladybugTargets),
                 board: drillLadybug
             ),
 
             // 8. Mosquito (Mimicry)
             TutorialStep(
-                caption: "O Mosquito copia o movimento de qualquer inseto que ele estiver tocando. Como ele toca uma Formiga, mova seu Mosquito deslizando pelo perímetro.",
+                caption: "O Camaleão copia o movimento de qualquer animal que ele estiver tocando. Como ele toca um Guepardo, mova seu Camaleão deslizando pelo perímetro.",
                 action: .move(pieceID: mosquitoDrillID, from: mosquitoDrillFrom, accept: mosquitoTargets),
                 board: drillMosquito
             ),
 
             // 9. Win / Checkmate with Grasshopper jump
             TutorialStep(
-                caption: "A Rainha adversária está cercada em 5 dos 6 lados! Pule com seu Gafanhoto no último espaço vazio para fechar o 6º lado e vencer a partida!",
+                caption: "O Leão adversário está cercado em 5 dos 6 lados! Pule com seu Canguru no último espaço vazio para fechar o 6º lado e vencer a partida!",
                 action: .move(pieceID: winnerID, from: Hex(2, 0), accept: [winCell]),
                 board: drill4
             ),
 
             // 10. Completion & Campaign CTA
             TutorialStep(
-                caption: "Parabéns! Você dominou o objetivo e a movimentação de cada inseto do Hive. Inicie agora a Jornada da Colmeia para encarar desafios táticos progressivos!",
+                caption: "Parabéns! Você dominou o objetivo e a movimentação de cada criatura do Huli. Inicie agora a Jornada da Savana para encarar desafios táticos progressivos!",
                 action: .narrate,
                 board: nil,
                 isFinal: true
