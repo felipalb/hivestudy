@@ -63,160 +63,237 @@ private extension Path {
     }
 }
 
-/// The eight animal glyph paths, each authored in a normalized 0...1 box via `rect.pt`.
+/// The eight animal glyph paths, each authored with smooth curves and distinctive geometric silhouettes.
 private enum BugGlyphs {
-    /// 🦁 Leão (formerly Queen Bee): Lion head with a majestic radiating mane and crown silhouette.
+    /// 🦁 Leão (Lion): Regal lion emblem with stylized radiant mane, ears, and facial features.
     static func queen(_ r: CGRect) -> Path {
         var p = Path()
-        // Outer mane spikes
-        p.addOval(r, center: r.pt(0.5, 0.50), rx: r.len(0.38), ry: r.len(0.38))
-        // Ears
-        p.addDot(r.pt(0.24, 0.22), r: r.len(0.09))
-        p.addDot(r.pt(0.76, 0.22), r: r.len(0.09))
-        // Face cutout / inner head
-        p.addOval(r, center: r.pt(0.5, 0.52), rx: r.len(0.24), ry: r.len(0.25))
-        // Snout and nose
-        p.addDot(r.pt(0.5, 0.58), r: r.len(0.08))
-        // Mane details (cut-outs)
-        for angle in stride(from: 0.0, to: 2.0 * .pi, by: .pi / 4.0) {
-            let cx = 0.5 + 0.32 * cos(angle)
-            let cy = 0.5 + 0.32 * sin(angle)
-            p.addDot(r.pt(cx, cy), r: r.len(0.04))
-        }
+        // Outer Crown & Majestic Mane Silhouette
+        p.move(to: r.pt(0.50, 0.02))
+        p.addLine(to: r.pt(0.58, 0.12))
+        p.addLine(to: r.pt(0.70, 0.05))
+        p.addLine(to: r.pt(0.76, 0.18))
+        p.addLine(to: r.pt(0.90, 0.18))
+        p.addQuadCurve(to: r.pt(0.94, 0.44), control: r.pt(0.98, 0.30))
+        p.addQuadCurve(to: r.pt(0.82, 0.72), control: r.pt(0.94, 0.62))
+        p.addQuadCurve(to: r.pt(0.50, 0.98), control: r.pt(0.70, 0.95))
+        p.addQuadCurve(to: r.pt(0.18, 0.72), control: r.pt(0.30, 0.95))
+        p.addQuadCurve(to: r.pt(0.06, 0.44), control: r.pt(0.06, 0.62))
+        p.addQuadCurve(to: r.pt(0.10, 0.18), control: r.pt(0.02, 0.30))
+        p.addLine(to: r.pt(0.24, 0.18))
+        p.addLine(to: r.pt(0.30, 0.05))
+        p.addLine(to: r.pt(0.42, 0.12))
+        p.closeSubpath()
+
+        // Inner Face Mask (Cut-out)
+        p.move(to: r.pt(0.50, 0.22))
+        p.addQuadCurve(to: r.pt(0.74, 0.42), control: r.pt(0.68, 0.24))
+        p.addQuadCurve(to: r.pt(0.68, 0.68), control: r.pt(0.74, 0.58))
+        p.addLine(to: r.pt(0.50, 0.86))
+        p.addLine(to: r.pt(0.32, 0.68))
+        p.addQuadCurve(to: r.pt(0.26, 0.42), control: r.pt(0.26, 0.58))
+        p.addQuadCurve(to: r.pt(0.50, 0.22), control: r.pt(0.32, 0.24))
+        p.closeSubpath()
+
+        // Almond Eyes & Nose (Solid core details)
+        p.addOval(r, center: r.pt(0.40, 0.46), rx: r.len(0.05), ry: r.len(0.035))
+        p.addOval(r, center: r.pt(0.60, 0.46), rx: r.len(0.05), ry: r.len(0.035))
+        p.addDot(r.pt(0.50, 0.64), r: r.len(0.06))
         return p
     }
 
-    /// 🦍 Gorila (formerly Beetle): Broad, powerful shoulders, muscular chest and strong head.
+    /// 🦍 Gorila (Gorilla): Powerful Silverback bust with sagittal crest, heavy brow, and massive shoulders.
     static func beetle(_ r: CGRect) -> Path {
         var p = Path()
-        // Head with prominent brow
-        p.addDot(r.pt(0.5, 0.22), r: r.len(0.14))
-        // Heavy muscular torso
-        p.addOval(r, center: r.pt(0.5, 0.60), rx: r.len(0.38), ry: r.len(0.30))
-        // Broad shoulders
-        p.addDot(r.pt(0.18, 0.44), r: r.len(0.12))
-        p.addDot(r.pt(0.82, 0.44), r: r.len(0.12))
-        // Grounded arms
-        p.addLimb(from: r.pt(0.18, 0.44), to: r.pt(0.14, 0.84), width: r.len(0.10))
-        p.addLimb(from: r.pt(0.82, 0.44), to: r.pt(0.86, 0.84), width: r.len(0.10))
-        // Chest definition cut-outs
-        p.addDot(r.pt(0.40, 0.52), r: r.len(0.06))
-        p.addDot(r.pt(0.60, 0.52), r: r.len(0.06))
+        // Massive Silverback Body & Shoulder Silhouette
+        p.move(to: r.pt(0.50, 0.06)) // Sagittal Crest
+        p.addQuadCurve(to: r.pt(0.70, 0.18), control: r.pt(0.64, 0.08))
+        p.addQuadCurve(to: r.pt(0.94, 0.42), control: r.pt(0.86, 0.26))
+        p.addQuadCurve(to: r.pt(0.88, 0.88), control: r.pt(0.96, 0.70))
+        p.addLine(to: r.pt(0.74, 0.94))
+        p.addQuadCurve(to: r.pt(0.50, 0.78), control: r.pt(0.62, 0.90))
+        p.addQuadCurve(to: r.pt(0.26, 0.94), control: r.pt(0.38, 0.90))
+        p.addLine(to: r.pt(0.12, 0.88))
+        p.addQuadCurve(to: r.pt(0.06, 0.42), control: r.pt(0.04, 0.70))
+        p.addQuadCurve(to: r.pt(0.30, 0.18), control: r.pt(0.14, 0.26))
+        p.addQuadCurve(to: r.pt(0.50, 0.06), control: r.pt(0.36, 0.08))
+        p.closeSubpath()
+
+        // Heavy Brow & Face Cut-out
+        p.move(to: r.pt(0.32, 0.32))
+        p.addLine(to: r.pt(0.68, 0.32))
+        p.addQuadCurve(to: r.pt(0.64, 0.62), control: r.pt(0.70, 0.48))
+        p.addQuadCurve(to: r.pt(0.50, 0.70), control: r.pt(0.58, 0.68))
+        p.addQuadCurve(to: r.pt(0.36, 0.62), control: r.pt(0.42, 0.68))
+        p.addQuadCurve(to: r.pt(0.32, 0.32), control: r.pt(0.30, 0.48))
+        p.closeSubpath()
+
+        // Piercing Eyes & Broad Nostrils (Solid features inside face)
+        p.addDot(r.pt(0.42, 0.42), r: r.len(0.035))
+        p.addDot(r.pt(0.58, 0.42), r: r.len(0.035))
+        p.addOval(r, center: r.pt(0.46, 0.54), rx: r.len(0.03), ry: r.len(0.04))
+        p.addOval(r, center: r.pt(0.54, 0.54), rx: r.len(0.03), ry: r.len(0.04))
         return p
     }
 
-    /// 🦘 Canguru (formerly Grasshopper): Kangaroo in iconic leaping silhouette with long tail and upright ears.
+    /// 🦘 Canguru (Kangaroo): Dynamic leaping kangaroo silhouette with long ears, spring legs, and counterweight tail.
     static func grasshopper(_ r: CGRect) -> Path {
         var p = Path()
-        // Head
-        p.addDot(r.pt(0.68, 0.24), r: r.len(0.11))
-        // Long alert ears
-        p.addLimb(from: r.pt(0.66, 0.20), to: r.pt(0.62, 0.04), width: r.len(0.035))
-        p.addLimb(from: r.pt(0.72, 0.20), to: r.pt(0.72, 0.04), width: r.len(0.035))
-        // Slender neck & torso
-        p.addOval(r, center: r.pt(0.50, 0.46), rx: r.len(0.22), ry: r.len(0.18))
-        // Powerful leaping hind thigh & leg
-        p.addOval(r, center: r.pt(0.34, 0.64), rx: r.len(0.20), ry: r.len(0.14))
-        p.addLimb(from: r.pt(0.32, 0.70), to: r.pt(0.48, 0.94), width: r.len(0.07))
-        // Long sweeping counterbalancing tail
-        p.addLimb(from: r.pt(0.24, 0.56), to: r.pt(0.04, 0.78), width: r.len(0.065))
-        // Forearms held forward
-        p.addLimb(from: r.pt(0.58, 0.46), to: r.pt(0.74, 0.54), width: r.len(0.04))
+        // Kangaroo Silhouette in Leaping Motion
+        p.move(to: r.pt(0.68, 0.02)) // Ear tips
+        p.addLine(to: r.pt(0.64, 0.18))
+        p.addQuadCurve(to: r.pt(0.86, 0.28), control: r.pt(0.76, 0.20)) // Snout
+        p.addQuadCurve(to: r.pt(0.72, 0.40), control: r.pt(0.82, 0.38)) // Chin/Throat
+        p.addQuadCurve(to: r.pt(0.80, 0.52), control: r.pt(0.78, 0.46)) // Forepaws
+        p.addLine(to: r.pt(0.68, 0.56))
+        p.addQuadCurve(to: r.pt(0.58, 0.88), control: r.pt(0.64, 0.72)) // Powerful hind leg & foot
+        p.addLine(to: r.pt(0.44, 0.94))
+        p.addQuadCurve(to: r.pt(0.34, 0.68), control: r.pt(0.48, 0.80)) // Thigh
+        p.addQuadCurve(to: r.pt(0.04, 0.84), control: r.pt(0.18, 0.66)) // Long arched tail
+        p.addQuadCurve(to: r.pt(0.24, 0.50), control: r.pt(0.12, 0.60)) // Back curve
+        p.addQuadCurve(to: r.pt(0.54, 0.24), control: r.pt(0.38, 0.34)) // Neck
+        p.addLine(to: r.pt(0.60, 0.04))
+        p.closeSubpath()
+
+        // Pouch / Inner line accent (Cut-out)
+        p.addOval(r, center: r.pt(0.52, 0.52), rx: r.len(0.06), ry: r.len(0.09))
+        // Eye Dot
+        p.addDot(r.pt(0.74, 0.25), r: r.len(0.028))
         return p
     }
 
-    /// 🦓 Zebra (formerly Spider): Proud zebra head in profile with distinct cut-out stripes.
+    /// 🦓 Zebra: Proud wild zebra in profile with crisp, elegant geometric stripes.
     static func spider(_ r: CGRect) -> Path {
         var p = Path()
-        // Head & Muzzle
-        p.addOval(r, center: r.pt(0.58, 0.54), rx: r.len(0.26), ry: r.len(0.16))
-        p.addDot(r.pt(0.80, 0.60), r: r.len(0.10)) // muzzle
-        // Neck & Crest
-        p.addOval(r, center: r.pt(0.36, 0.58), rx: r.len(0.22), ry: r.len(0.28))
-        // Ears
-        p.addLimb(from: r.pt(0.38, 0.32), to: r.pt(0.34, 0.10), width: r.len(0.05))
-        p.addLimb(from: r.pt(0.44, 0.32), to: r.pt(0.46, 0.12), width: r.len(0.045))
-        // Distinctive Zebra vertical stripes (cut-outs)
-        for x in [0.28, 0.38, 0.48, 0.58, 0.68] {
-            p.addLimb(from: r.pt(x, 0.36), to: r.pt(x - 0.04, 0.76), width: r.len(0.035))
-        }
+        // Zebra Head & Neck Profile
+        p.move(to: r.pt(0.34, 0.04)) // Upright Mane top
+        p.addLine(to: r.pt(0.44, 0.04))
+        p.addQuadCurve(to: r.pt(0.88, 0.56), control: r.pt(0.68, 0.20)) // Muzzle top
+        p.addQuadCurve(to: r.pt(0.78, 0.72), control: r.pt(0.88, 0.68)) // Muzzle bottom
+        p.addQuadCurve(to: r.pt(0.54, 0.60), control: r.pt(0.66, 0.72)) // Jawline
+        p.addQuadCurve(to: r.pt(0.44, 0.96), control: r.pt(0.50, 0.82)) // Throat/Chest
+        p.addLine(to: r.pt(0.18, 0.94))
+        p.addQuadCurve(to: r.pt(0.24, 0.40), control: r.pt(0.16, 0.64)) // Back of neck
+        p.addLine(to: r.pt(0.34, 0.04))
+        p.closeSubpath()
+
+        // Elegant Zebra Stripe Cut-outs
+        p.addLimb(from: r.pt(0.28, 0.22), to: r.pt(0.50, 0.44), width: r.len(0.045))
+        p.addLimb(from: r.pt(0.24, 0.42), to: r.pt(0.48, 0.62), width: r.len(0.045))
+        p.addLimb(from: r.pt(0.22, 0.64), to: r.pt(0.42, 0.82), width: r.len(0.045))
+        p.addLimb(from: r.pt(0.54, 0.28), to: r.pt(0.68, 0.42), width: r.len(0.04))
+        p.addDot(r.pt(0.76, 0.60), r: r.len(0.04)) // Nostril
         return p
     }
 
-    /// 🐆 Guepardo (formerly Ant Soldado): Streamlined, athletic running feline silhouette.
+    /// 🐆 Guepardo (Cheetah): Aerodynamic running cheetah silhouette with tear stripes and speed posture.
     static func ant(_ r: CGRect) -> Path {
         var p = Path()
-        // Aerodynamic arched body
-        p.addOval(r, center: r.pt(0.50, 0.50), rx: r.len(0.36), ry: r.len(0.15))
-        // Sleek head & small ears
-        p.addDot(r.pt(0.82, 0.40), r: r.len(0.11))
-        p.addDot(r.pt(0.80, 0.28), r: r.len(0.04))
-        // Front sprint legs
-        p.addLimb(from: r.pt(0.70, 0.54), to: r.pt(0.88, 0.82), width: r.len(0.05))
-        // Hind spring legs
-        p.addLimb(from: r.pt(0.30, 0.54), to: r.pt(0.14, 0.84), width: r.len(0.06))
-        // Long dynamic curved tail
-        p.addLimb(from: r.pt(0.20, 0.46), to: r.pt(0.04, 0.26), width: r.len(0.045))
-        p.addLimb(from: r.pt(0.04, 0.26), to: r.pt(0.14, 0.16), width: r.len(0.04))
-        // Coat spot cut-outs
-        p.addDot(r.pt(0.42, 0.48), r: r.len(0.035))
-        p.addDot(r.pt(0.56, 0.46), r: r.len(0.035))
-        p.addDot(r.pt(0.48, 0.54), r: r.len(0.035))
+        // Sleek Running Cheetah Silhouette
+        p.move(to: r.pt(0.82, 0.24)) // Sleek Head
+        p.addQuadCurve(to: r.pt(0.96, 0.36), control: r.pt(0.92, 0.26)) // Snout
+        p.addQuadCurve(to: r.pt(0.84, 0.46), control: r.pt(0.92, 0.46)) // Chin
+        p.addQuadCurve(to: r.pt(0.94, 0.78), control: r.pt(0.96, 0.62)) // Forward Sprint Leg
+        p.addLine(to: r.pt(0.84, 0.84))
+        p.addQuadCurve(to: r.pt(0.62, 0.54), control: r.pt(0.76, 0.64)) // Underbelly arch
+        p.addQuadCurve(to: r.pt(0.44, 0.54), control: r.pt(0.52, 0.58))
+        p.addQuadCurve(to: r.pt(0.18, 0.94), control: r.pt(0.36, 0.76)) // Hind Leap Leg
+        p.addLine(to: r.pt(0.08, 0.88))
+        p.addQuadCurve(to: r.pt(0.24, 0.54), control: r.pt(0.14, 0.68)) // Thigh
+        p.addQuadCurve(to: r.pt(0.06, 0.16), control: r.pt(0.12, 0.36)) // Long Curved Balancing Tail
+        p.addQuadCurve(to: r.pt(0.20, 0.12), control: r.pt(0.10, 0.10))
+        p.addQuadCurve(to: r.pt(0.36, 0.42), control: r.pt(0.22, 0.32)) // Arched Spine
+        p.addQuadCurve(to: r.pt(0.72, 0.24), control: r.pt(0.54, 0.34)) // Shoulders & Neck
+        p.closeSubpath()
+
+        // Cheetah Rosettes & Tear-mark Cut-outs
+        p.addOval(r, center: r.pt(0.48, 0.44), rx: r.len(0.04), ry: r.len(0.03))
+        p.addOval(r, center: r.pt(0.62, 0.40), rx: r.len(0.04), ry: r.len(0.03))
+        p.addDot(r.pt(0.86, 0.32), r: r.len(0.025)) // Eye
         return p
     }
 
-    /// 🦎 Camaleão (formerly Mosquito): Chameleon with curled spiral tail, eye turret, and crest.
+    /// 🦎 Camaleão (Chameleon): Iconic chameleon with crested casque, spiral Fibonacci tail, and large turret eye.
     static func mosquito(_ r: CGRect) -> Path {
         var p = Path()
-        // Arched body
-        p.addOval(r, center: r.pt(0.50, 0.46), rx: r.len(0.26), ry: r.len(0.22))
-        // Head with helmet crest
-        p.addDot(r.pt(0.74, 0.38), r: r.len(0.13))
-        p.addLimb(from: r.pt(0.68, 0.30), to: r.pt(0.60, 0.16), width: r.len(0.05))
-        // Big round eye cutout
-        p.addDot(r.pt(0.74, 0.36), r: r.len(0.045))
-        // Coiled spiral tail
-        p.addOval(r, center: r.pt(0.22, 0.62), rx: r.len(0.14), ry: r.len(0.14))
-        p.addLimb(from: r.pt(0.34, 0.52), to: r.pt(0.22, 0.62), width: r.len(0.05))
-        p.addDot(r.pt(0.22, 0.62), r: r.len(0.05)) // inner coil cutout
-        // Climbing feet
-        p.addLimb(from: r.pt(0.62, 0.60), to: r.pt(0.68, 0.86), width: r.len(0.045))
-        p.addLimb(from: r.pt(0.42, 0.60), to: r.pt(0.38, 0.86), width: r.len(0.045))
+        // Arched Casque Body & Tail Spiral Silhouette
+        p.move(to: r.pt(0.62, 0.08)) // Crest peak
+        p.addQuadCurve(to: r.pt(0.92, 0.32), control: r.pt(0.82, 0.12)) // Snout
+        p.addQuadCurve(to: r.pt(0.82, 0.54), control: r.pt(0.92, 0.50)) // Throat
+        p.addQuadCurve(to: r.pt(0.76, 0.88), control: r.pt(0.84, 0.74)) // Front Pincer Foot
+        p.addLine(to: r.pt(0.66, 0.86))
+        p.addQuadCurve(to: r.pt(0.54, 0.62), control: r.pt(0.64, 0.72)) // Belly
+        p.addQuadCurve(to: r.pt(0.48, 0.88), control: r.pt(0.54, 0.76)) // Rear Pincer Foot
+        p.addLine(to: r.pt(0.38, 0.86))
+        p.addQuadCurve(to: r.pt(0.28, 0.62), control: r.pt(0.36, 0.72)) // Tail base
+        // Fibonacci Spiral Tail
+        p.addQuadCurve(to: r.pt(0.06, 0.60), control: r.pt(0.12, 0.76))
+        p.addQuadCurve(to: r.pt(0.20, 0.38), control: r.pt(0.04, 0.44))
+        p.addQuadCurve(to: r.pt(0.28, 0.54), control: r.pt(0.26, 0.42))
+        p.addQuadCurve(to: r.pt(0.16, 0.58), control: r.pt(0.26, 0.62)) // inner curl
+        p.addQuadCurve(to: r.pt(0.34, 0.44), control: r.pt(0.16, 0.48))
+        p.addQuadCurve(to: r.pt(0.52, 0.20), control: r.pt(0.40, 0.30)) // High arched back
+        p.addLine(to: r.pt(0.62, 0.08))
+        p.closeSubpath()
+
+        // Large Turret Eye & Color Bands (Cut-outs)
+        p.addOval(r, center: r.pt(0.76, 0.34), rx: r.len(0.07), ry: r.len(0.07))
+        p.addDot(r.pt(0.76, 0.34), r: r.len(0.025)) // pupil
+        p.addLimb(from: r.pt(0.48, 0.32), to: r.pt(0.44, 0.52), width: r.len(0.035))
+        p.addLimb(from: r.pt(0.58, 0.28), to: r.pt(0.56, 0.50), width: r.len(0.035))
         return p
     }
 
-    /// 🦅 Águia (formerly Ladybug): Soaring eagle with wide outstretched wings and sharp beak.
+    /// 🦅 Águia (Eagle): Majestic soaring eagle with sharp curved beak, spread wings, and fanned tail.
     static func ladybug(_ r: CGRect) -> Path {
         var p = Path()
-        // Eagle body and tail
-        p.addOval(r, center: r.pt(0.50, 0.52), rx: r.len(0.13), ry: r.len(0.26))
-        p.addLimb(from: r.pt(0.50, 0.70), to: r.pt(0.50, 0.94), width: r.len(0.10)) // fan tail
-        // Head & hooked beak
-        p.addDot(r.pt(0.50, 0.22), r: r.len(0.09))
-        p.addLimb(from: r.pt(0.50, 0.22), to: r.pt(0.64, 0.20), width: r.len(0.035)) // beak
-        // Left soaring wing
-        p.move(to: r.pt(0.44, 0.44))
-        p.addLine(to: r.pt(0.04, 0.22))
-        p.addLine(to: r.pt(0.12, 0.46))
-        p.addLine(to: r.pt(0.44, 0.56))
+        // Eagle Head & Hooked Beak
+        p.move(to: r.pt(0.50, 0.08))
+        p.addQuadCurve(to: r.pt(0.66, 0.16), control: r.pt(0.60, 0.08)) // Hooked beak tip
+        p.addLine(to: r.pt(0.54, 0.24))
+        // Right Wing (Spread Feathers)
+        p.addLine(to: r.pt(0.82, 0.10))
+        p.addLine(to: r.pt(0.76, 0.26))
+        p.addLine(to: r.pt(0.96, 0.20))
+        p.addLine(to: r.pt(0.86, 0.38))
+        p.addLine(to: r.pt(0.98, 0.38))
+        p.addQuadCurve(to: r.pt(0.62, 0.60), control: r.pt(0.86, 0.54))
+        // Fanned Tail Feathers
+        p.addLine(to: r.pt(0.64, 0.94))
+        p.addLine(to: r.pt(0.50, 0.86))
+        p.addLine(to: r.pt(0.36, 0.94))
+        p.addLine(to: r.pt(0.38, 0.60))
+        // Left Wing (Spread Feathers)
+        p.addQuadCurve(to: r.pt(0.02, 0.38), control: r.pt(0.14, 0.54))
+        p.addLine(to: r.pt(0.14, 0.38))
+        p.addLine(to: r.pt(0.04, 0.20))
+        p.addLine(to: r.pt(0.24, 0.26))
+        p.addLine(to: r.pt(0.18, 0.10))
+        p.addLine(to: r.pt(0.46, 0.24))
+        p.addQuadCurve(to: r.pt(0.50, 0.08), control: r.pt(0.46, 0.14))
         p.closeSubpath()
-        // Right soaring wing
-        p.move(to: r.pt(0.56, 0.44))
-        p.addLine(to: r.pt(0.96, 0.22))
-        p.addLine(to: r.pt(0.88, 0.46))
-        p.addLine(to: r.pt(0.56, 0.56))
-        p.closeSubpath()
+
+        // Fierce Eye Cut-out
+        p.addDot(r.pt(0.48, 0.18), r: r.len(0.035))
         return p
     }
 
-    /// 🛡️ Tatu-bola (formerly Pillbug): Armadillo with arched armored protective plates.
+    /// 🛡️ Tatu-bola (Armadillo): Armadillo with segmented armor plates and protective curl.
     static func pillbug(_ r: CGRect) -> Path {
         var p = Path()
-        p.addOval(r, center: r.pt(0.54, 0.50), rx: r.len(0.36), ry: r.len(0.26))       // rolled shell
-        p.addDot(r.pt(0.16, 0.50), r: r.len(0.09))                                    // head
-        for x in [0.36, 0.52, 0.68] {
-            p.addLimb(from: r.pt(x, 0.24), to: r.pt(x, 0.76), width: r.len(0.028))    // shell band cut-outs
-        }
+        p.move(to: r.pt(0.20, 0.40))
+        p.addQuadCurve(to: r.pt(0.50, 0.08), control: r.pt(0.30, 0.10))
+        p.addQuadCurve(to: r.pt(0.88, 0.44), control: r.pt(0.78, 0.12))
+        p.addQuadCurve(to: r.pt(0.78, 0.88), control: r.pt(0.92, 0.72))
+        p.addQuadCurve(to: r.pt(0.30, 0.88), control: r.pt(0.50, 0.96))
+        p.addQuadCurve(to: r.pt(0.10, 0.58), control: r.pt(0.18, 0.86))
+        p.closeSubpath()
+
+        // Armored Bands (Cut-outs)
+        p.addLimb(from: r.pt(0.34, 0.22), to: r.pt(0.38, 0.82), width: r.len(0.04))
+        p.addLimb(from: r.pt(0.50, 0.18), to: r.pt(0.52, 0.84), width: r.len(0.04))
+        p.addLimb(from: r.pt(0.66, 0.22), to: r.pt(0.66, 0.82), width: r.len(0.04))
+        p.addDot(r.pt(0.20, 0.52), r: r.len(0.035))
         return p
     }
 }

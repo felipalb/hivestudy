@@ -19,16 +19,8 @@ struct TileView: View {
 
     var body: some View {
         ZStack {
-            RegularHexagon()
-                .fill(HiveTheme.tileGradient(piece.color))
-                .overlay(
-                    RegularHexagon()
-                        .stroke(HiveTheme.tileBorder(piece.color), lineWidth: max(1, size * 0.06))
-                )
-                .overlay(ringOverlay)
-                .shadow(color: .black.opacity(0.35), radius: size * 0.14, x: 0, y: size * 0.10)
-
-            emblem
+            tileImage
+            nameBadge
         }
         .frame(width: layout.tileWidth, height: layout.tileHeight)
         .modifier(ShakeEffect(animatableData: shakePhase))
@@ -36,9 +28,68 @@ struct TileView: View {
         .onChange(of: rejectedSeq) { oldValue, newValue in
             guard let newValue, newValue != oldValue else { return }
             withAnimation(.linear(duration: reduceMotion ? 0.12 : 0.36)) {
-                shakePhase += reduceMotion ? 0.5 : 3   // calm single nudge under Reduce Motion
+                shakePhase += reduceMotion ? 0.5 : 3
             }
         }
+    }
+
+    private var tileBorderColor: Color {
+        piece.color == .white
+            ? Color(red: 0.95, green: 0.85, blue: 0.60).opacity(0.85)
+            : Color(red: 1.0, green: 0.70, blue: 0.20).opacity(0.85)
+    }
+
+    private var tileShadowColor: Color {
+        piece.color == .white
+            ? Color.black.opacity(0.4)
+            : Color(red: 1.0, green: 0.65, blue: 0.15).opacity(0.35)
+    }
+
+    private var tileImage: some View {
+        Image(pieceImageName(for: piece))
+            .resizable()
+            .scaledToFill()
+            .frame(width: layout.tileWidth, height: layout.tileHeight)
+            .clipShape(RegularHexagon())
+            .overlay(
+                RegularHexagon()
+                    .stroke(tileBorderColor, lineWidth: max(1.2, size * 0.06))
+            )
+            .overlay(ringOverlay)
+            .shadow(color: tileShadowColor, radius: size * 0.16, x: 0, y: size * 0.08)
+    }
+
+    private var nameBadge: some View {
+        let isWhite = piece.color == .white
+        let textColor = isWhite
+            ? Color(red: 0.35, green: 0.25, blue: 0.10)
+            : Color(red: 1.0, green: 0.88, blue: 0.45)
+        let bgFill = isWhite
+            ? Color.white.opacity(0.88)
+            : Color.black.opacity(0.78)
+        let borderStroke = isWhite
+            ? Color(red: 0.8, green: 0.7, blue: 0.5).opacity(0.5)
+            : Color(red: 1.0, green: 0.75, blue: 0.2).opacity(0.6)
+
+        return VStack {
+            Spacer()
+            Text(piece.bug.tileName)
+                .font(.system(size: max(8, size * 0.19), weight: .heavy, design: .rounded))
+                .tracking(0.4)
+                .lineLimit(1)
+                .minimumScaleFactor(0.3)
+                .foregroundStyle(textColor)
+                .padding(.horizontal, max(4, size * 0.10))
+                .padding(.vertical, max(1.5, size * 0.03))
+                .background(
+                    Capsule()
+                        .fill(bgFill)
+                        .overlay(Capsule().stroke(borderStroke, lineWidth: 0.8))
+                )
+                .shadow(color: .black.opacity(0.5), radius: 2, y: 1)
+                .padding(.bottom, size * 0.12)
+        }
+        .frame(maxWidth: layout.tileWidth * 0.88)
     }
 
     @ViewBuilder private var ringOverlay: some View {
@@ -51,25 +102,18 @@ struct TileView: View {
         }
     }
 
-    /// The tile shows the bug's own icon above its actual name (not an initial),
-    /// both tinted in the bug's signature colour, sitting directly on the plain
-    /// black/white tile — no separate coloured plaque behind them.
-    /// (Split into sub-expressions to keep the Swift type-checker fast.)
-    private var emblem: some View {
-        let fontSize: CGFloat = size * 0.24
-        let name = Text(piece.bug.tileName)
-            .font(.system(size: fontSize, weight: .heavy, design: .rounded))
-            .minimumScaleFactor(0.35)
-            .lineLimit(1)
-        let icon = BugIcon(bug: piece.bug)
-            .frame(width: size * 0.56, height: size * 0.56)
-        return VStack(spacing: size * 0.05) {
-            icon
-            name
+    private func pieceImageName(for piece: Piece) -> String {
+        let colorSuffix = piece.color == .white ? "White" : "Black"
+        switch piece.bug {
+        case .queen: return "PieceLion" + colorSuffix
+        case .ant: return "PieceCheetah" + colorSuffix
+        case .spider: return "PieceZebra" + colorSuffix
+        case .grasshopper: return "PieceKangaroo" + colorSuffix
+        case .beetle: return "PieceGorilla" + colorSuffix
+        case .ladybug: return "PieceEagle" + colorSuffix
+        case .mosquito: return "PieceChameleon" + colorSuffix
+        case .pillbug: return "PieceGorilla" + colorSuffix
         }
-        .foregroundStyle(HiveTheme.accent(piece.bug, on: piece.color))
-        .shadow(color: .black.opacity(0.4), radius: 1, y: 0.5)
-        .frame(maxWidth: layout.tileWidth * 0.92)
     }
 }
 
