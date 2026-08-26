@@ -33,7 +33,16 @@ struct BoardView: View {
             ZStack {
                 background
                     .contentShape(Rectangle())
-                    .onTapGesture { game.deselect() }
+                    .onTapGesture(count: 2) {
+                        #if canImport(UIKit)
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        #endif
+                        userAdjusted = false
+                        fit(animated: true, force: true)
+                    }
+                    .onTapGesture(count: 1) {
+                        game.deselect()
+                    }
 
                 content(center: center)
                     .scaleEffect(zoom * pinch)
@@ -55,15 +64,32 @@ struct BoardView: View {
             .coordinateSpace(name: "board")
             .gesture(panGesture)
             .simultaneousGesture(zoomGesture)
-            .onAppear { viewSize = geo.size; boardCenter = center; fit(animated: false) }
+            .onAppear {
+                viewSize = geo.size
+                boardCenter = center
+                fit(animated: false, force: true)
+            }
             .onChange(of: geo.size) { _, new in
                 viewSize = new
                 boardCenter = CGPoint(x: new.width / 2, y: new.height / 2)
                 if !userAdjusted { fit(animated: false) }
             }
-            .onChange(of: game.state.board.tileCount) { _, _ in if !userAdjusted { fit(animated: true) } }
-            .onChange(of: game.history.count) { _, new in if new == 0 { userAdjusted = false; fit(animated: true) } }
-            .onChange(of: game.recenterTrigger) { _, _ in userAdjusted = false; fit(animated: true) }
+            .onChange(of: game.state.board.tileCount) { _, _ in
+                fit(animated: true)
+            }
+            .onChange(of: game.state.lastMove) { _, _ in
+                fit(animated: true)
+            }
+            .onChange(of: game.history.count) { _, new in
+                if new == 0 {
+                    userAdjusted = false
+                    fit(animated: true, force: true)
+                }
+            }
+            .onChange(of: game.recenterTrigger) { _, _ in
+                userAdjusted = false
+                fit(animated: true, force: true)
+            }
             // Keep hoveredHex in sync with the finger during hand-originated
             // drags (board-originated drags update it in their own gesture).
             .onChange(of: game.dragState.fingerPosition) { _, pos in
@@ -108,6 +134,7 @@ struct BoardView: View {
                              selected: game.isSelected(pieceID: rt.piece.id),
                              lastMoved: rt.lastMoved,
                              isBeetleTarget: rt.isBeetleTarget,
+                             isCutVertex: rt.isCutVertex,
                              rejectedSeq: rejectedSeq(for: rt))
                         .position(rt.position + center)
                         .zIndex(rt.z)
@@ -505,27 +532,112 @@ struct BoardView: View {
         }
     }
 
-    // MARK: Auto-fit
+    // MARK: Auto-fit & Responsive Viewport
 
-    private func fit(animated: Bool) {
-        let cells = game.state.board.occupiedCells
-        guard !cells.isEmpty, viewSize != .zero else {
-            withAnimation(animated ? .spring(response: 0.4, dampingFraction: 0.85) : nil) {
-                pan = .zero; zoom = 1
+    private let minZoomScale: CGFloat = 0.35
+    private let maxZoomScale: CGFloat = 1.75
+
+    /// Computes the comprehensive bounding box of all occupied cells plus safety margins.
+    private func computeHiveBounds(includingNeighbors: Bool = true) -> (minX: CGFloat, maxX: CGFloat, minY: CGFloat, maxY: CGFloat, center: CGPoint)? {
+        let occupied = game.state.board.occupiedCells
+        guard !occupied.isEmpty else { return nil }
+
+        var evaluatedHexes = Set(occupied)
+        if includingNeighbors {
+            // Include adjacent ring for safety margin and upcoming moves
+            for hex in occupied {
+                for neighbor in hex.neighbors {
+                    evaluatedHexes.insert(neighbor)
+                }
+            }
+        }
+
+        let pts = evaluatedHexes.map { layout.point(for: $0) }
+        guard let minX = pts.map(\.x).min(),
+              let maxX = pts.map(\.x).max(),
+              let minY = pts.map(\.y).min(),
+              let maxY = pts.map(\.y).max() else { return nil }
+
+        let hexHalfW = layout.tileWidth * 0.55
+        let hexHalfH = layout.tileHeight * 0.55
+
+        let bboxMinX = minX - hexHalfW
+        let bboxMaxX = maxX + hexHalfW
+        let bboxMinY = minY - hexHalfH
+        let bboxMaxY = maxY + hexHalfH
+
+        let centroid = CGPoint(x: (bboxMinX + bboxMaxX) / 2, y: (bboxMinY + bboxMaxY) / 2)
+        return (bboxMinX, bboxMaxX, bboxMinY, bboxMaxY, centroid)
+    }
+
+    /// Checks if any occupied tile lies outside the current visible viewport.
+    private func isHiveOutOfBounds() -> Bool {
+        guard let bounds = computeHiveBounds(includingNeighbors: false), viewSize != .zero else { return false }
+
+        let currentScale = max(0.01, zoom)
+        let currentPan = pan
+
+        // Visible board bounds based on view size, pan, and zoom
+        let visibleLeft = (-viewSize.width / 2 - currentPan.width) / currentScale
+        let visibleRight = (viewSize.width / 2 - currentPan.width) / currentScale
+        let visibleTop = (-viewSize.height / 2 - currentPan.height) / currentScale
+        let visibleBottom = (viewSize.height / 2 - currentPan.height) / currentScale
+
+        let marginX = layout.tileWidth * 0.3
+        let marginY = layout.tileHeight * 0.3
+
+        return bounds.minX < visibleLeft + marginX ||
+               bounds.maxX > visibleRight - marginX ||
+               bounds.minY < visibleTop + marginY ||
+               bounds.maxY > visibleBottom - marginY
+    }
+
+    /// Performs the animated camera auto-fit with smooth spring interpolation.
+    private func fit(animated: Bool, force: Bool = false) {
+        guard viewSize != .zero else { return }
+
+        // If user manually panned/zoomed, only auto-fit if the board is exceeding screen bounds or if forced
+        if userAdjusted && !force && !isHiveOutOfBounds() {
+            return
+        }
+
+        guard let bounds = computeHiveBounds(includingNeighbors: true) else {
+            let anim: Animation? = animated
+                ? (reduceMotion ? .easeOut(duration: 0.3) : .spring(response: 0.45, dampingFraction: 0.85))
+                : nil
+            withAnimation(anim) {
+                pan = .zero
+                zoom = 1.0
             }
             return
         }
-        let pts = cells.map { layout.point(for: $0) }
-        let minX = pts.map(\.x).min()!, maxX = pts.map(\.x).max()!
-        let minY = pts.map(\.y).min()!, maxY = pts.map(\.y).max()!
-        let boundsW = (maxX - minX) + layout.tileWidth * 1.4
-        let boundsH = (maxY - minY) + layout.tileHeight * 1.4
-        let targetZoom = min(max(min(viewSize.width / boundsW, viewSize.height / boundsH), 0.5), 1.8)
-        let bboxCenter = CGPoint(x: (minX + maxX) / 2, y: (minY + maxY) / 2)
-        let newPan = CGSize(width: -bboxCenter.x * targetZoom, height: -bboxCenter.y * targetZoom)
-        withAnimation(animated ? .spring(response: 0.45, dampingFraction: 0.85) : nil) {
-            zoom = targetZoom
-            pan = newPan
+
+        // Safe margins for UI overlays (Top header/turn indicator, bottom hand trays/coaching panel)
+        let safeMarginH: CGFloat = 36
+        let safeMarginV: CGFloat = 90
+
+        let availableW = max(80, viewSize.width - safeMarginH * 2)
+        let availableH = max(80, viewSize.height - safeMarginV * 2)
+
+        let requiredW = max(1, bounds.maxX - bounds.minX)
+        let requiredH = max(1, bounds.maxY - bounds.minY)
+
+        let scaleW = availableW / requiredW
+        let scaleH = availableH / requiredH
+        let idealZoom = min(max(min(scaleW, scaleH), minZoomScale), maxZoomScale)
+
+        let targetPan = CGSize(
+            width: -bounds.center.x * idealZoom,
+            height: -bounds.center.y * idealZoom
+        )
+
+        let anim: Animation? = animated
+            ? (reduceMotion ? .easeOut(duration: 0.35) : .spring(response: 0.48, dampingFraction: 0.82))
+            : nil
+
+        withAnimation(anim) {
+            zoom = idealZoom
+            pan = targetPan
         }
     }
 
@@ -551,6 +663,7 @@ struct BoardView: View {
                 let base = layout.point(for: hex)
                 let lift = CGPoint(x: CGFloat(level) * 3, y: CGFloat(level) * -4)
                 let last = isTop && hex == lastHex
+                let isCut = isTop && board.height(hex) == 1 && board.isCutVertex(hex)
                 tiles.append(RenderedTile(
                     piece: piece,
                     hex: hex,
@@ -559,6 +672,7 @@ struct BoardView: View {
                     isTop: isTop,
                     lastMoved: last,
                     isBeetleTarget: isTop && targets.contains(hex),
+                    isCutVertex: isCut,
                     z: last ? 1000 : Double(level) + (isTop ? 100 : 0)
                 ))
             }
@@ -579,6 +693,7 @@ private struct RenderedTile: Identifiable {
     let isTop: Bool
     let lastMoved: Bool
     let isBeetleTarget: Bool
+    let isCutVertex: Bool
     let z: Double
     var id: Int { piece.id }
 }

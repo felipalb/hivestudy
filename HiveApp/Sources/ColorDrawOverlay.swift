@@ -137,32 +137,26 @@ struct ColorDrawOverlay: View {
 
     private var spinningTile: some View {
         let faceColor = currentFaceColor
-        let piece = Piece(id: -1, bug: .queen, color: faceColor)
+        let imageName = faceColor == .white ? "PieceLionWhite" : "PieceLionBlack"
+        let borderColor = faceColor == .white
+            ? Color(red: 0.95, green: 0.85, blue: 0.60).opacity(0.85)
+            : Color(red: 1.0, green: 0.70, blue: 0.20).opacity(0.85)
 
         return ZStack {
-            RegularHexagon()
-                .fill(HiveTheme.tileGradient(faceColor))
+            Image(imageName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: layout.tileWidth, height: layout.tileHeight)
+                .clipShape(RegularHexagon())
+                // Un-mirror when viewing back face in 3D rotation
+                .scaleEffect(x: isBackFace ? -1 : 1, y: 1)
                 .overlay(
                     RegularHexagon()
                         .stroke(
-                            isRevealed ? HiveTheme.selection : HiveTheme.tileBorder(faceColor),
+                            isRevealed ? HiveTheme.selection : borderColor,
                             lineWidth: isRevealed ? hexSize * 0.12 : max(1.5, hexSize * 0.06)
                         )
                 )
-
-            // Emblem (Queen icon + name)
-            VStack(spacing: hexSize * 0.05) {
-                BugIcon(bug: .queen)
-                    .frame(width: hexSize * 0.58, height: hexSize * 0.58)
-                Text(piece.bug.tileName)
-                    .font(.system(size: hexSize * 0.25, weight: .heavy, design: .rounded))
-                    .minimumScaleFactor(0.35)
-                    .lineLimit(1)
-            }
-            .foregroundStyle(HiveTheme.accent(.queen, on: faceColor))
-            .shadow(color: .black.opacity(0.4), radius: 1, y: 0.5)
-            // Un-mirror the text when viewing back face in 3D
-            .scaleEffect(x: isBackFace ? -1 : 1, y: 1)
         }
         .contentShape(RegularHexagon())
     }

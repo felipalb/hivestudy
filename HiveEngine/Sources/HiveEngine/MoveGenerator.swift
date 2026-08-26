@@ -88,6 +88,72 @@ public enum MoveGenerator {
         return moves
     }
 
+    // MARK: - Immobility Diagnosis
+
+    /// The precise reason why a piece on the board cannot be moved.
+    public enum ImmobilityReason: Equatable, Sendable {
+        case queenNotPlaced
+        case oneHiveCutVertex
+        case coveredByPiece
+        case freedomToMoveBlocked
+        case spiderNoExactPath
+        case noValidMoves
+    }
+
+    /// Determines the exact didactic reason why a piece cannot move in the current state.
+    public static func immobilityReason(for pieceID: Int, in state: GameState) -> ImmobilityReason {
+        guard let hex = state.board.location(of: pieceID) else {
+            return .noValidMoves
+        }
+
+        // Check if piece is covered beneath another piece in the stack
+        guard let top = state.board.topPiece(hex), top.id == pieceID else {
+            return .coveredByPiece
+        }
+
+        // Must place Queen before moving any piece
+        if !state.queenPlaced(top.color) {
+            return .queenNotPlaced
+        }
+
+        // One-Hive Rule: a ground tile that bridges/sustains the hive cannot move
+        if state.board.height(hex) == 1 && state.board.isCutVertex(hex) {
+            return .oneHiveCutVertex
+        }
+
+        // Lift piece to check physical sliding and reachability constraints
+        var lifted = state.board
+        lifted.pop(at: hex)
+
+        switch top.bug {
+        case .spider:
+            let steps = Rules.groundSlideSteps(on: lifted, from: hex)
+            if steps.isEmpty {
+                return .freedomToMoveBlocked
+            }
+            let exact = Rules.exactSlideDestinations(on: lifted, from: hex, steps: 3)
+            if exact.isEmpty {
+                return .spiderNoExactPath
+            }
+        case .queen, .ant:
+            let steps = Rules.groundSlideSteps(on: lifted, from: hex)
+            if steps.isEmpty {
+                return .freedomToMoveBlocked
+            }
+        case .beetle:
+            if lifted.height(hex) == 0 {
+                let steps = Rules.beetleDestinations(on: lifted, from: hex)
+                if steps.isEmpty {
+                    return .freedomToMoveBlocked
+                }
+            }
+        default:
+            break
+        }
+
+        return .noValidMoves
+    }
+
     /// Legal destinations for the tile currently on top of `hex`. Public so the
     /// UI can highlight moves for a tapped tile.
     public static func destinations(for pieceID: Int, in state: GameState) -> [Hex] {

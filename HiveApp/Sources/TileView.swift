@@ -8,11 +8,13 @@ struct TileView: View {
     var selected: Bool = false
     var lastMoved: Bool = false
     var isBeetleTarget: Bool = false
+    var isCutVertex: Bool = false
     /// Increments every time this tile's tap is rejected (e.g. an opponent's
     /// piece) — each increment shakes the tile so the "no" is visible.
     var rejectedSeq: Int? = nil
 
     @State private var shakePhase: CGFloat = 0
+    @State private var cutVertexPulse: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var layout: HexLayout { HexLayout(size: size) }
@@ -21,10 +23,25 @@ struct TileView: View {
         ZStack {
             tileImage
             nameBadge
+            cutVertexGlow
         }
         .frame(width: layout.tileWidth, height: layout.tileHeight)
         .modifier(ShakeEffect(animatableData: shakePhase))
         .contentShape(RegularHexagon())
+        .onAppear {
+            if isCutVertex && !reduceMotion {
+                withAnimation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true)) {
+                    cutVertexPulse = true
+                }
+            }
+        }
+        .onChange(of: isCutVertex) { _, newValue in
+            if newValue && !reduceMotion {
+                withAnimation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true)) {
+                    cutVertexPulse = true
+                }
+            }
+        }
         .onChange(of: rejectedSeq) { oldValue, newValue in
             guard let newValue, newValue != oldValue else { return }
             withAnimation(.linear(duration: reduceMotion ? 0.12 : 0.36)) {
@@ -62,34 +79,34 @@ struct TileView: View {
     private var nameBadge: some View {
         let isWhite = piece.color == .white
         let textColor = isWhite
-            ? Color(red: 0.35, green: 0.25, blue: 0.10)
+            ? Color(red: 0.30, green: 0.20, blue: 0.05)
             : Color(red: 1.0, green: 0.88, blue: 0.45)
         let bgFill = isWhite
-            ? Color.white.opacity(0.88)
-            : Color.black.opacity(0.78)
+            ? Color.white.opacity(0.92)
+            : Color.black.opacity(0.85)
         let borderStroke = isWhite
-            ? Color(red: 0.8, green: 0.7, blue: 0.5).opacity(0.5)
-            : Color(red: 1.0, green: 0.75, blue: 0.2).opacity(0.6)
+            ? Color(red: 0.8, green: 0.7, blue: 0.5).opacity(0.55)
+            : Color(red: 1.0, green: 0.75, blue: 0.2).opacity(0.65)
 
         return VStack {
             Spacer()
             Text(piece.bug.tileName)
-                .font(.system(size: max(8, size * 0.19), weight: .heavy, design: .rounded))
-                .tracking(0.4)
+                .font(.system(size: max(7.5, size * 0.165), weight: .heavy, design: .rounded))
+                .tracking(0.3)
                 .lineLimit(1)
                 .minimumScaleFactor(0.3)
                 .foregroundStyle(textColor)
-                .padding(.horizontal, max(4, size * 0.10))
-                .padding(.vertical, max(1.5, size * 0.03))
+                .padding(.horizontal, max(3.5, size * 0.075))
+                .padding(.vertical, max(1, size * 0.022))
                 .background(
                     Capsule()
                         .fill(bgFill)
-                        .overlay(Capsule().stroke(borderStroke, lineWidth: 0.8))
+                        .overlay(Capsule().stroke(borderStroke, lineWidth: 0.75))
                 )
-                .shadow(color: .black.opacity(0.5), radius: 2, y: 1)
-                .padding(.bottom, size * 0.12)
+                .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.8)
+                .padding(.bottom, size * 0.26)
         }
-        .frame(maxWidth: layout.tileWidth * 0.88)
+        .frame(maxWidth: layout.tileWidth * 0.75)
     }
 
     @ViewBuilder private var ringOverlay: some View {
@@ -99,6 +116,22 @@ struct TileView: View {
             RegularHexagon().stroke(HiveTheme.target, lineWidth: size * 0.14)
         } else if lastMoved {
             RegularHexagon().stroke(HiveTheme.lastMove, lineWidth: size * 0.07)
+        }
+    }
+
+    @ViewBuilder private var cutVertexGlow: some View {
+        if isCutVertex {
+            RegularHexagon()
+                .stroke(
+                    Color(red: 0.95, green: 0.25, blue: 0.25).opacity(cutVertexPulse ? 0.65 : 0.18),
+                    lineWidth: max(1.5, size * 0.08)
+                )
+                .shadow(
+                    color: Color(red: 0.90, green: 0.20, blue: 0.20).opacity(cutVertexPulse ? 0.55 : 0.12),
+                    radius: cutVertexPulse ? size * 0.14 : size * 0.04
+                )
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
     }
 

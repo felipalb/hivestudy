@@ -5,7 +5,7 @@ import Foundation
 /// The six neighbour directions are ordered so that two indices that are
 /// adjacent modulo 6 identify the two hexes that border a shared edge — the
 /// "gate" cells used by Hive's freedom-to-move rule.
-public struct Hex: Hashable, Sendable, Codable {
+public struct Hex: Hashable, Sendable, Codable, Comparable {
     public let q: Int
     public let r: Int
 
@@ -15,6 +15,11 @@ public struct Hex: Hashable, Sendable, Codable {
     }
 
     public static let origin = Hex(0, 0)
+
+    public static func < (lhs: Hex, rhs: Hex) -> Bool {
+        if lhs.q != rhs.q { return lhs.q < rhs.q }
+        return lhs.r < rhs.r
+    }
 
     /// Neighbour offsets, going clockwise: E, NE, NW, W, SW, SE.
     public static let directions: [Hex] = [

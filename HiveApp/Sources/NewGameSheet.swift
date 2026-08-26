@@ -145,7 +145,7 @@ struct RulesView: View {
 
                 section("O Leão", "Seu Leão deve ser colocado até o quarto turno, e nenhuma peça pode ser movida até que ele esteja no campo.")
 
-                section("Formação Unificada", "O campo deve permanecer conectado o tempo todo. Uma peça que dividiria a formação ao ser levantada não pode se mover. As peças deslizam — não podem passar por uma abertura bloqueada dos dois lados.")
+                section("Colmeia Unida (Sustentação)", "O campo funciona como uma corrente única e contínua: nunca pode ser dividido em dois grupos. Qualquer peça que esteja sustentando a ligação da colmeia (ponto de sustentação) não pode se mover. As peças que deslizam também precisam de espaço físico livre para passar.")
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("As Peças")

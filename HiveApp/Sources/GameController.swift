@@ -482,8 +482,9 @@ final class GameController {
     struct TutorialConstraint: Equatable {
         enum Kind: Equatable {
             case none
-            case place(bug: Bug, targets: Set<Hex>)
-            case move(pieceID: Int, targets: Set<Hex>)
+            case place(bug: Bug)
+            case move(bug: Bug)
+            case winMatch
         }
         var kind: Kind = .none
         var onCompleted: (() -> Void)? = nil
@@ -494,6 +495,21 @@ final class GameController {
     }
 
     var tutorialConstraint: TutorialConstraint = TutorialConstraint(kind: .none)
+
+    /// Sets the constraint for the current step while keeping the live continuous board state.
+    func setTutorialConstraint(_ constraint: TutorialConstraint.Kind, onCompleted: (() -> Void)? = nil) {
+        selection = .none
+        targets = []
+        hint = nil
+        isThinking = false
+        toast = nil
+        toastTask?.cancel()
+        dragState.reset()
+        animationPhase = .none
+        animationProgress = 0
+        tutorialConstraint = TutorialConstraint(kind: constraint, onCompleted: onCompleted)
+        recenterBoard()
+    }
 
     /// Loads a drill position for the tutorial with constraints.
     func loadTutorialState(_ newState: GameState, constraint: TutorialConstraint.Kind, onCompleted: (() -> Void)? = nil) {
@@ -538,9 +554,9 @@ final class GameController {
         }
 
         if tutorialConstraint.kind != .none {
-            if case let .place(wantBug, allowedTargets) = tutorialConstraint.kind {
+            if case let .place(wantBug) = tutorialConstraint.kind {
                 guard bug == wantBug else {
-                    showToast("Toque no \(wantBug.displayName) para esta lição", icon: "hand.tap")
+                    showToast("Toque no \(wantBug.displayName) da sua mão para esta lição", icon: "hand.tap")
                     Haptics.error()
                     return
                 }
@@ -548,7 +564,7 @@ final class GameController {
                     clearSelection(); return
                 }
                 selection = .hand(bug, color)
-                targets = allowedTargets
+                targets = Set(MoveGenerator.placementCells(state))
                 Haptics.selection()
                 return
             } else {
@@ -589,20 +605,11 @@ final class GameController {
             return
         }
         if let top = state.board.topPiece(hex) {
-            if top.color == current, humanControls(top.color) {
+            // ONLY pieces belonging to the human player can be selected/moved!
+            if top.color == options.humanColor && humanControls(top.color) {
                 selectBoardPiece(id: top.id, at: hex)
             } else {
-                let message: String
-                if options.mode == .online || options.mode == .vsAI {
-                    if top.color != options.humanColor {
-                        message = "Essa peça é do oponente"
-                    } else {
-                        message = "Aguarde o turno do oponente para jogar"
-                    }
-                } else {
-                    message = "Agora é o turno das \(current == .white ? "Brancas" : "Pretas")"
-                }
-                rejectTap(at: hex, message: message)
+                rejectTap(at: hex, message: "Essa peça é do adversário")
             }
             return
         }
@@ -631,21 +638,70 @@ final class GameController {
             clearSelection(); return
         }
 
+        guard let piece = state.board.topPiece(hex), piece.color == options.humanColor, humanControls(piece.color) else {
+            rejectTap(at: hex, message: "Essa peça é do adversário")
+            return
+        }
+
         if tutorialConstraint.kind != .none {
-            if case let .move(wantID, allowedTargets) = tutorialConstraint.kind {
-                guard id == wantID else {
-                    showToast("Mova a peça indicada para esta lição", icon: "hand.tap")
-                    Haptics.error()
+            if case let .move(wantBug) = tutorialConstraint.kind {
+                guard piece.bug == wantBug else {
+                    let reason = MoveGenerator.immobilityReason(for: id, in: state)
+                    if reason != .noValidMoves {
+                        let (msg, icon) = immobilityToast(for: reason)
+                        rejectionSeq += 1
+                        rejection = Rejection(hex: hex, seq: rejectionSeq)
+                        Haptics.error()
+                        showToast(msg, icon: icon)
+                    } else {
+                        showToast("Mova o seu \(wantBug.displayName) para esta lição", icon: "hand.tap")
+                        Haptics.error()
+                    }
                     return
                 }
                 selection = .board(pieceID: id, hex: hex)
                 hint = nil
                 Haptics.selection()
-                targets = allowedTargets
+                targets = Set(MoveGenerator.destinations(for: id, in: state))
+                if targets.isEmpty {
+                    let reason = MoveGenerator.immobilityReason(for: id, in: state)
+                    let (msg, icon) = immobilityToast(for: reason)
+                    rejectionSeq += 1
+                    rejection = Rejection(hex: hex, seq: rejectionSeq)
+                    Haptics.error()
+                    showToast(msg, icon: icon)
+                } else {
+                    coachTargetTap()
+                }
                 return
-            } else if case let .place(wantBug, _) = tutorialConstraint.kind {
-                showToast("Coloque o \(wantBug.displayName) da sua mão primeiro", icon: "hand.tap")
-                Haptics.error()
+            } else if case let .place(wantBug) = tutorialConstraint.kind {
+                let reason = MoveGenerator.immobilityReason(for: id, in: state)
+                if reason != .noValidMoves {
+                    let (msg, icon) = immobilityToast(for: reason)
+                    rejectionSeq += 1
+                    rejection = Rejection(hex: hex, seq: rejectionSeq)
+                    Haptics.error()
+                    showToast(msg, icon: icon)
+                } else {
+                    showToast("Coloque o \(wantBug.displayName) da sua mão primeiro", icon: "hand.tap")
+                    Haptics.error()
+                }
+                return
+            } else if case .winMatch = tutorialConstraint.kind {
+                selection = .board(pieceID: id, hex: hex)
+                hint = nil
+                Haptics.selection()
+                targets = Set(MoveGenerator.destinations(for: id, in: state))
+                if targets.isEmpty {
+                    let reason = MoveGenerator.immobilityReason(for: id, in: state)
+                    let (msg, icon) = immobilityToast(for: reason)
+                    rejectionSeq += 1
+                    rejection = Rejection(hex: hex, seq: rejectionSeq)
+                    Haptics.error()
+                    showToast(msg, icon: icon)
+                } else {
+                    coachTargetTap()
+                }
                 return
             }
         }
@@ -655,11 +711,32 @@ final class GameController {
         Haptics.selection()
         targets = Set(MoveGenerator.destinations(for: id, in: state))
         if targets.isEmpty {
-            // Pinned or blocked: say so, otherwise the pickup looks broken.
-            impact(.rigid)
-            showToast("Esta peça não pode se mover agora", icon: "lock.fill")
+            // Pinned, bridging hive, or blocked: explain the exact rule.
+            let reason = MoveGenerator.immobilityReason(for: id, in: state)
+            let (msg, icon) = immobilityToast(for: reason)
+            rejectionSeq += 1
+            rejection = Rejection(hex: hex, seq: rejectionSeq)
+            Haptics.error()
+            showToast(msg, icon: icon)
         } else {
             coachTargetTap()
+        }
+    }
+
+    private func immobilityToast(for reason: MoveGenerator.ImmobilityReason) -> (message: String, icon: String) {
+        switch reason {
+        case .queenNotPlaced:
+            return ("Posicione seu Leão na mesa antes de mover qualquer peça", "crown.fill")
+        case .oneHiveCutVertex:
+            return ("Regra da Colmeia Unida: esta peça sustenta a colmeia e não pode se mover", "link")
+        case .coveredByPiece:
+            return ("Peça imobilizada: há outra criatura sobre ela", "square.stack.3d.up.fill")
+        case .freedomToMoveBlocked:
+            return ("Bloqueada: sem espaço livre para deslizar (portão fechado)", "arrow.left.and.right.and.arrow.up.and.down")
+        case .spiderNoExactPath:
+            return ("A Zebra precisa de uma rota contínua de exatamente 3 passos", "shoeprints.fill")
+        case .noValidMoves:
+            return ("Esta peça não possui movimentos válidos no momento", "lock.fill")
         }
     }
 
@@ -687,29 +764,31 @@ final class GameController {
         if tutorialConstraint.kind != .none {
             switch source {
             case let .hand(bug, color):
-                guard color == current, humanControls(color) else { return }
-                guard case let .place(wantBug, allowedTargets) = tutorialConstraint.kind, bug == wantBug else {
+                guard color == options.humanColor, humanControls(color) else { return }
+                guard case let .place(wantBug) = tutorialConstraint.kind, bug == wantBug else {
                     Haptics.error()
                     return
                 }
                 piece = Piece(id: -1, bug: bug, color: color)
-                dragTargets = allowedTargets
+                dragTargets = Set(MoveGenerator.placementCells(state))
 
             case let .board(pieceID, from):
                 guard let top = state.board.topPiece(from),
-                      top.id == pieceID, top.color == current,
+                      top.id == pieceID, top.color == options.humanColor,
                       humanControls(top.color) else { return }
-                guard case let .move(wantID, allowedTargets) = tutorialConstraint.kind, pieceID == wantID else {
-                    Haptics.error()
-                    return
+                if case let .move(wantBug) = tutorialConstraint.kind {
+                    guard top.bug == wantBug else {
+                        Haptics.error()
+                        return
+                    }
                 }
                 piece = top
-                dragTargets = allowedTargets
+                dragTargets = Set(MoveGenerator.destinations(for: pieceID, in: state))
             }
         } else {
             switch source {
             case let .hand(bug, color):
-                guard color == current, humanControls(color) else { return }
+                guard color == options.humanColor, humanControls(color) else { return }
                 piece = Piece(id: -1, bug: bug, color: color)
                 var cells = Set(MoveGenerator.placementCells(state))
                 if state.mustPlaceQueen && bug != .queen { cells = [] }
@@ -874,7 +953,27 @@ final class GameController {
             }
 
             if let onCompleted = controller.tutorialConstraint.onCompleted {
-                onCompleted()
+                var satisfied = false
+                switch controller.tutorialConstraint.kind {
+                case .none:
+                    satisfied = true
+                case let .place(wantBug):
+                    if case let .place(b, _) = move, b == wantBug { satisfied = true }
+                case let .move(wantBug):
+                    if case let .move(_, _, to) = move,
+                       let top = controller.state.board.topPiece(to),
+                       top.bug == wantBug {
+                        satisfied = true
+                    }
+                case .winMatch:
+                    if controller.state.result != .ongoing || controller.state.queenSurroundCount(.black) == 6 {
+                        satisfied = true
+                    }
+                }
+
+                if satisfied {
+                    onCompleted()
+                }
             } else {
                 controller.scheduleAIIfNeeded()
                 controller.autoPassIfHumanStuck()

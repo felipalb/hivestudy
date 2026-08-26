@@ -86,7 +86,8 @@ public struct GameState: Sendable, Equatable, Codable {
     public var currentTurnIndex: Int { (movesMade[current] ?? 0) + 1 }
 
     public func queenPlaced(_ color: PlayerColor) -> Bool {
-        !unplaced.contains { $0.color == color && $0.bug == .queen }
+        if queenHex(color) != nil { return true }
+        return !unplaced.contains { $0.color == color && $0.bug == .queen }
     }
 
     /// True when the current player is on their fourth turn and still owes a Queen.
@@ -198,6 +199,7 @@ extension GameState {
                 current: PlayerColor,
                 unplaced: [Piece],
                 movesMade: [PlayerColor: Int],
+                lastMove: Move? = nil,
                 config: GameConfig = .base) {
         self.board = board
         self.current = current
@@ -205,7 +207,7 @@ extension GameState {
         self.movesMade = movesMade
         self.result = .ongoing
         self.config = config
-        self.lastMove = nil
+        self.lastMove = lastMove
         self.result = evaluateResult()
     }
 }

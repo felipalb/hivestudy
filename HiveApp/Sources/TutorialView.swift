@@ -7,243 +7,91 @@ import UIKit
 
 // MARK: - Script model
 
-/// One guided step in the tutorial.
+/// One guided adaptive step in the tutorial.
 struct TutorialStep {
-    enum Action: Equatable {
+    enum Goal: Equatable {
         case narrate
-        case place(bug: Bug, accept: Set<Hex>)
-        case move(pieceID: Int, from: Hex, accept: Set<Hex>)
+        case place(bug: Bug)
+        case move(bug: Bug)
+        case winMatch
     }
     let caption: String
-    let action: Action
-    /// When non-nil, this position is loaded on entering the step.
-    let board: GameState?
-    /// The last step shows "finish" buttons instead of "Next".
+    let goal: Goal
     var isFinal = false
 
     /// The hand bug that should be placed in this step.
-    var hintBug: Bug? { if case let .place(bug, _) = action { return bug }; return nil }
-    /// The board piece that should move in this step.
-    var hintPieceID: Int? { if case let .move(id, _, _) = action { return id }; return nil }
+    var hintBug: Bug? { if case let .place(bug) = goal { return bug }; return nil }
+    /// The bug that should move in this step.
+    var hintMoveBug: Bug? { if case let .move(bug) = goal { return bug }; return nil }
 }
 
 // MARK: - Script
 
-/// Builds the drills and the ordered step list.
+/// Builds the continuous evolving match and ordered step list.
 private enum TutorialScript {
     static func build() -> [TutorialStep] {
-        let drill1 = placementDrill()
-        let drill2 = queenDrill()
-        let drill3 = moveDrill()
-        let drillSpider = spiderDrill()
-        let drillBeetle = beetleDrill()
-        let drillGrasshopper = grasshopperDrill()
-        let drillLadybug = ladybugDrill()
-        let drillMosquito = mosquitoDrill()
-        let drill4 = winDrill()
-
-        let placeCells1 = Set(MoveGenerator.placementCells(drill1))
-        let placeCells2 = Set(MoveGenerator.placementCells(drill2))
-        let antTargets = Set(MoveGenerator.destinations(for: antID, in: drill3))
-        let spiderTargets = Set(MoveGenerator.destinations(for: spiderDrillID, in: drillSpider))
-        let beetleTargets = Set(MoveGenerator.destinations(for: beetleDrillID, in: drillBeetle))
-        let grasshopperTargets = Set(MoveGenerator.destinations(for: grasshopperDrillID, in: drillGrasshopper))
-        let ladybugTargets = Set(MoveGenerator.destinations(for: ladybugDrillID, in: drillLadybug))
-        let mosquitoTargets = Set(MoveGenerator.destinations(for: mosquitoDrillID, in: drillMosquito))
-        let winCell = Hex(-1, 0)
-
         return [
-            // 1. Placement Rule
+            // 1. Placement Rule (Adaptive: any legal placement)
             TutorialStep(
-                caption: "No Huli não há tabuleiro fixo — as próprias peças criam o campo. Novas peças devem tocar as suas e nunca as do oponente. Toque ou arraste o Guepardo da sua mão para um espaço destacado.",
-                action: .place(bug: .ant, accept: placeCells1),
-                board: drill1
+                caption: "No Huli não há tabuleiro fixo — as próprias peças criam o campo em expansão. Novas peças devem tocar suas peças e nunca as do oponente. Toque ou arraste a Zebra da sua mão para qualquer espaço destacado.",
+                goal: .place(bug: .spider)
             ),
 
-            // 2. Queen Rule & Goal
+            // 2. Queen Rule & Supreme Goal (Adaptive: any legal placement)
             TutorialStep(
-                caption: "O objetivo supremo é cercar o Leão adversário em todos os 6 lados! Seu Leão deve entrar até o 4º turno para liberar a movimentação das suas peças. Coloque seu Leão agora!",
-                action: .place(bug: .queen, accept: placeCells2),
-                board: drill2
+                caption: "O objetivo supremo é cercar o Leão adversário em todos os 6 lados! Seu Leão deve entrar até o 4º turno para liberar a movimentação das suas peças. Coloque seu Leão em qualquer casa destacada!",
+                goal: .place(bug: .queen)
             ),
 
-            // 3. Ant (Unlimited perimeter slide)
+            // 3. FUNDAMENTO PRINCIPAL: Regra da Colmeia Unida (100% Demonstrativo no tabuleiro real do jogador)
             TutorialStep(
-                caption: "Com o Leão em jogo, o movimento está liberado! O Guepardo desliza por qualquer distância ao redor do contorno da formação. Mova seu Guepardo para uma das posições destacadas.",
-                action: .move(pieceID: antID, from: Hex(-1, 0), accept: antTargets),
-                board: drill3
+                caption: "FUNDAMENTO DA COLMEIA UNIDA: A colmeia funciona como uma corrente contínua — ela NUNCA pode se partir em dois grupos! A peça com o pulsar vermelho suave sustenta a formação e NÃO PODE se mover. Apenas peças livres nas pontas têm permissão para se deslocar. Toque nas peças para testar ou clique em Entendi para prosseguir.",
+                goal: .narrate
             ),
 
-            // 4. Spider (Exactly 3 steps)
+            // 4. Spider (Adaptive: any legal 3-step slide)
             TutorialStep(
-                caption: "A Zebra também desliza pelo contorno, mas anda sempre exatamente 3 passos — nem mais, nem menos. Mova sua Zebra até o destino destacado.",
-                action: .move(pieceID: spiderDrillID, from: spiderDrillFrom, accept: spiderTargets),
-                board: drillSpider
+                caption: "Com a colmeia protegida, sua Zebra na ponta está livre para se mover! A Zebra desliza pelo contorno dando sempre exatamente 3 passos — nem mais, nem menos. Mova sua Zebra pelo contorno!",
+                goal: .move(bug: .spider)
             ),
 
-            // 5. Beetle (Climbing & Pinning)
+            // 5. Beetle (Adaptive: climbing or moving)
             TutorialStep(
-                caption: "O Gorila anda 1 passo e tem um poder único: pode subir no topo de qualquer peça, imobilizando-a. Suba seu Gorila em cima da peça preta para travá-la!",
-                action: .move(pieceID: beetleDrillID, from: beetleDrillFrom, accept: beetleTargets),
-                board: drillBeetle
+                caption: "O Gorila move 1 passo e tem um poder único: pode subir no topo de qualquer peça, imobilizando-a por completo. Mova seu Gorila para travar uma peça adversária ou avançar!",
+                goal: .move(bug: .beetle)
             ),
 
-            // 6. Grasshopper (Line jump)
+            // 6. Grasshopper (Adaptive: straight line jump)
             TutorialStep(
-                caption: "O Canguru não desliza pelo contorno: ele salta em linha reta sobre as peças até o primeiro espaço livre. Salte com seu Canguru sobre a linha de peças!",
-                action: .move(pieceID: grasshopperDrillID, from: grasshopperDrillFrom, accept: grasshopperTargets),
-                board: drillGrasshopper
+                caption: "O Canguru não desliza pelo contorno: ele salta em linha reta sobre uma fileira de peças até o primeiro espaço livre. Salte com seu Canguru sobre a linha de peças!",
+                goal: .move(bug: .grasshopper)
             ),
 
-            // 7. Ladybug (Climb 2, drop 1)
+            // 7. Ladybug (Adaptive: fly 2 over, 1 down)
             TutorialStep(
-                caption: "A Águia move 3 espaços: voa 2 casas pelo topo da formação e pousa em uma casa vazia. Mova sua Águia para se infiltrar no espaço interno!",
-                action: .move(pieceID: ladybugDrillID, from: ladybugDrillFrom, accept: ladybugTargets),
-                board: drillLadybug
+                caption: "A Águia move 3 espaços: voa 2 casas pelo topo da formação e pousa em uma casa vazia. Voe com sua Águia por cima da colmeia!",
+                goal: .move(bug: .ladybug)
             ),
 
-            // 8. Mosquito (Mimicry)
+            // 8. Mosquito (Adaptive: mimic adjacent bug)
             TutorialStep(
-                caption: "O Camaleão copia o movimento de qualquer animal que ele estiver tocando. Como ele toca um Guepardo, mova seu Camaleão deslizando pelo perímetro.",
-                action: .move(pieceID: mosquitoDrillID, from: mosquitoDrillFrom, accept: mosquitoTargets),
-                board: drillMosquito
+                caption: "O Camaleão copia o movimento de qualquer criatura que estiver tocando. Copie o poder da peça vizinha e mova seu Camaleão!",
+                goal: .move(bug: .mosquito)
             ),
 
-            // 9. Win / Checkmate with Grasshopper jump
+            // 9. Win / Checkmate (Adaptive: complete the surround)
             TutorialStep(
-                caption: "O Leão adversário está cercado em 5 dos 6 lados! Pule com seu Canguru no último espaço vazio para fechar o 6º lado e vencer a partida!",
-                action: .move(pieceID: winnerID, from: Hex(2, 0), accept: [winCell]),
-                board: drill4
+                caption: "O Leão adversário está cercado em 5 dos 6 lados nesta formação que você construiu! Faça o movimento decisivo para fechar o 6º lado e conquistar a vitória suprema!",
+                goal: .winMatch
             ),
 
             // 10. Completion & Campaign CTA
             TutorialStep(
-                caption: "Parabéns! Você dominou o objetivo e a movimentação de cada criatura do Huli. Inicie agora a Jornada da Savana para encarar desafios táticos progressivos!",
-                action: .narrate,
-                board: nil,
+                caption: "Parabéns! Você dominou o princípio da Colmeia Unida e todas as criaturas do Huli em uma partida contínua e dinâmica. Inicie agora a Jornada da Colmeia para encarar desafios táticos progressivos!",
+                goal: .narrate,
                 isFinal: true
             )
         ]
-    }
-
-    // Stable ids referenced by the move steps.
-    static let antID = 2
-    static let winnerID = 7
-    static let spiderDrillID = 3
-    static let spiderDrillFrom = Hex(-2, 1)
-    static let beetleDrillID = 2
-    static let beetleDrillFrom = Hex(-1, 0)
-    static let grasshopperDrillID = 3
-    static let grasshopperDrillFrom = Hex(-1, 0)
-    static let ladybugDrillID = 4
-    static let ladybugDrillFrom = Hex(-2, 1)
-    static let mosquitoDrillID = 3
-    static let mosquitoDrillFrom = Hex(-1, 1)
-
-    private static func make(_ tiles: [(Hex, Bug, PlayerColor)]) -> Board {
-        var b = Board()
-        var id = 0
-        for (hex, bug, color) in tiles { b.push(Piece(id: id, bug: bug, color: color), at: hex); id += 1 }
-        return b
-    }
-
-    private static func placementDrill() -> GameState {
-        let b = make([(Hex(0, 0), .spider, .white), (Hex(1, 0), .spider, .black)])
-        return GameState(board: b, current: .white,
-                         unplaced: [Piece(id: 200, bug: .ant, color: .white)],
-                         movesMade: [.white: 1, .black: 1])
-    }
-
-    private static func queenDrill() -> GameState {
-        let b = make([
-            (Hex(0, 0), .ant, .white),     (Hex(1, 0), .ant, .black),
-            (Hex(-1, 0), .spider, .white), (Hex(2, 0), .queen, .black)
-        ])
-        return GameState(board: b, current: .white,
-                         unplaced: [Piece(id: 200, bug: .queen, color: .white)],
-                         movesMade: [.white: 3, .black: 3])
-    }
-
-    private static func moveDrill() -> GameState {
-        let b = make([
-            (Hex(0, 0), .queen, .white),
-            (Hex(1, 0), .queen, .black),
-            (Hex(-1, 0), .ant, .white)
-        ])
-        return GameState(board: b, current: .white,
-                         unplaced: [], movesMade: [.white: 2, .black: 2])
-    }
-
-    private static func spiderDrill() -> GameState {
-        let b = make([
-            (Hex(0, 0), .queen, .white),
-            (Hex(1, 0), .queen, .black),
-            (Hex(0, 1), .ant, .black),
-            (Hex(-2, 1), .spider, .white),
-            (Hex(-1, 0), .ant, .white),
-        ])
-        return GameState(board: b, current: .white,
-                         unplaced: [], movesMade: [.white: 3, .black: 2])
-    }
-
-    private static func beetleDrill() -> GameState {
-        let b = make([
-            (Hex(0, -1), .queen, .white),
-            (Hex(1, -1), .queen, .black),
-            (Hex(-1, 0), .beetle, .white),
-            (Hex(0, 0), .ant, .black),
-        ])
-        return GameState(board: b, current: .white,
-                         unplaced: [], movesMade: [.white: 2, .black: 2])
-    }
-
-    private static func grasshopperDrill() -> GameState {
-        let b = make([
-            (Hex(0, 0), .queen, .white),
-            (Hex(1, 0), .queen, .black),
-            (Hex(2, 0), .beetle, .black),
-            (Hex(-1, 0), .grasshopper, .white)
-        ])
-        return GameState(board: b, current: .white,
-                         unplaced: [], movesMade: [.white: 3, .black: 3])
-    }
-
-    private static func ladybugDrill() -> GameState {
-        let b = make([
-            (Hex(0, 0), .queen, .white),
-            (Hex(1, 0), .queen, .black),
-            (Hex(-1, 0), .ant, .white),
-            (Hex(0, 1), .beetle, .black),
-            (Hex(-2, 1), .ladybug, .white),
-        ])
-        return GameState(board: b, current: .white,
-                         unplaced: [], movesMade: [.white: 3, .black: 2])
-    }
-
-    private static func mosquitoDrill() -> GameState {
-        let b = make([
-            (Hex(0, 0), .queen, .white),
-            (Hex(1, 0), .queen, .black),
-            (Hex(0, 1), .ant, .white),
-            (Hex(-1, 1), .mosquito, .white),
-        ])
-        return GameState(board: b, current: .white,
-                         unplaced: [], movesMade: [.white: 3, .black: 1])
-    }
-
-    private static func winDrill() -> GameState {
-        let b = make([
-            (Hex(0, 0), .queen, .black),
-            (Hex(1, 0), .ant, .black),
-            (Hex(1, -1), .beetle, .white),
-            (Hex(0, -1), .spider, .black),
-            (Hex(-1, 1), .ant, .white),
-            (Hex(0, 1), .grasshopper, .black),
-            (Hex(1, 1), .queen, .white),
-            (Hex(2, 0), .grasshopper, .white)
-        ])
-        return GameState(board: b, current: .white,
-                         unplaced: [], movesMade: [.white: 5, .black: 5])
     }
 }
 
@@ -257,6 +105,7 @@ private enum TutorialScript {
 /// - Press-and-hold on any piece opens `PieceMoveInfoOverlay` with animated diagrams.
 /// - Real-time haptic feedback and coaches invalid taps with standard toast pills.
 struct TutorialView: View {
+    var canSkip: Bool = true
     let onExit: () -> Void
     let onPlayGame: () -> Void
 
@@ -315,22 +164,14 @@ struct TutorialView: View {
         stepIndex = idx
         let step = steps[idx]
 
-        let constraintKind: GameController.TutorialConstraint.Kind
-        switch step.action {
-        case .narrate:
-            constraintKind = .none
-        case let .place(bug, accept):
-            constraintKind = .place(bug: bug, targets: accept)
-        case let .move(pieceID, _, accept):
-            constraintKind = .move(pieceID: pieceID, targets: accept)
-        }
+        prepareBoardForStep(idx)
 
-        let targetBoard = step.board ?? game.state
-        game.loadTutorialState(targetBoard, constraint: constraintKind) {
+        let constraintKind = constraintForGoal(step.goal)
+        game.setTutorialConstraint(constraintKind) {
             // Completed step action!
             Haptics.success()
             Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(700))
+                try? await Task.sleep(for: .milliseconds(650))
                 withAnimation(.easeInOut(duration: 0.3)) {
                     if stepIndex + 1 < steps.count {
                         loadStep(stepIndex + 1)
@@ -340,8 +181,329 @@ struct TutorialView: View {
         }
     }
 
+    private func prepareBoardForStep(_ idx: Int) {
+        if idx == 0 {
+            // Initial opening state: White Ant at (0,0) and Black Ant at (1,0)
+            var b = Board()
+            b.push(Piece(id: 0, bug: .ant, color: .white), at: Hex(0, 0))
+            b.push(Piece(id: 1, bug: .ant, color: .black), at: Hex(1, 0))
+            let unplaced = [
+                Piece(id: 2, bug: .spider, color: .white),
+                Piece(id: 4, bug: .queen, color: .white),
+                Piece(id: 6, bug: .beetle, color: .white),
+                Piece(id: 7, bug: .grasshopper, color: .white),
+                Piece(id: 8, bug: .ladybug, color: .white),
+                Piece(id: 9, bug: .mosquito, color: .white)
+            ]
+            let s = GameState(
+                board: b,
+                current: .white,
+                unplaced: unplaced,
+                movesMade: [.white: 1, .black: 1],
+                config: GameConfig(tournamentOpening: false, expansions: [.ladybug, .mosquito])
+            )
+            game.loadTutorialState(s, constraint: .place(bug: .spider))
+            return
+        }
+
+        // CONTINUOUS BOARD PRESERVATION:
+        var currentBoard = game.state.board
+        var unplaced = game.state.unplaced
+
+        // Ensure that if Queen is on the board, it is removed from unplaced
+        if game.state.queenPlaced(.white) || currentBoard.stacks.values.flatMap({ $0 }).contains(where: { $0.color == .white && $0.bug == .queen }) {
+            unplaced.removeAll { $0.color == .white && $0.bug == .queen }
+        }
+
+        switch idx {
+        case 1:
+            // Step 2: Black places Queen strictly touching friendly pieces
+            if !game.state.queenPlaced(.black) {
+                if let spot = findPlacement(for: .black, in: currentBoard) {
+                    currentBoard.push(Piece(id: 3, bug: .queen, color: .black), at: spot)
+                }
+            }
+            if !unplaced.contains(where: { $0.bug == .queen && $0.color == .white }) && !game.state.queenPlaced(.white) && !currentBoard.stacks.values.flatMap({ $0 }).contains(where: { $0.color == .white && $0.bug == .queen }) {
+                unplaced.append(Piece(id: 4, bug: .queen, color: .white))
+            }
+
+        case 2:
+            // Step 3: Demonstrative One-Hive principle on player's live board
+            break
+
+        case 3:
+            // Step 4: Spider movement - ensure Black piece is placed strictly touching the hive if added
+            if !currentBoard.occupiedCells.contains(where: { currentBoard.topPiece($0)?.color == .black && currentBoard.topPiece($0)?.bug == .grasshopper }) {
+                if let spot = findPlacement(for: .black, in: currentBoard) {
+                    currentBoard.push(Piece(id: 5, bug: .grasshopper, color: .black), at: spot)
+                }
+            }
+
+        case 4:
+            // Step 5: Beetle climbing / pinning - ensure Beetle is touching the hive
+            let hasBeetle = currentBoard.stacks.values.flatMap { $0 }.contains(where: { $0.bug == .beetle && $0.color == .white })
+            if !hasBeetle {
+                if let placement = findPlacement(for: .white, in: currentBoard) {
+                    currentBoard.push(Piece(id: 6, bug: .beetle, color: .white), at: placement)
+                } else if !unplaced.contains(where: { $0.bug == .beetle && $0.color == .white }) {
+                    unplaced.append(Piece(id: 6, bug: .beetle, color: .white))
+                }
+            }
+
+        case 5:
+            // Step 6: Grasshopper jumping - ensure Grasshopper is touching the hive
+            let hasGrasshopper = currentBoard.stacks.values.flatMap { $0 }.contains(where: { $0.bug == .grasshopper && $0.color == .white })
+            if !hasGrasshopper {
+                if let spot = findPlacement(for: .white, in: currentBoard) {
+                    currentBoard.push(Piece(id: 7, bug: .grasshopper, color: .white), at: spot)
+                } else if !unplaced.contains(where: { $0.bug == .grasshopper && $0.color == .white }) {
+                    unplaced.append(Piece(id: 7, bug: .grasshopper, color: .white))
+                }
+            }
+
+        case 6:
+            // Step 7: Ladybug flying - ensure Ladybug is touching the hive
+            let hasLadybug = currentBoard.stacks.values.flatMap { $0 }.contains(where: { $0.bug == .ladybug && $0.color == .white })
+            if !hasLadybug {
+                if let spot = findPlacement(for: .white, in: currentBoard) {
+                    currentBoard.push(Piece(id: 8, bug: .ladybug, color: .white), at: spot)
+                } else if !unplaced.contains(where: { $0.bug == .ladybug && $0.color == .white }) {
+                    unplaced.append(Piece(id: 8, bug: .ladybug, color: .white))
+                }
+            }
+
+        case 7:
+            // Step 8: Mosquito mimicry - ensure Mosquito is touching the hive
+            let hasMosquito = currentBoard.stacks.values.flatMap { $0 }.contains(where: { $0.bug == .mosquito && $0.color == .white })
+            if !hasMosquito {
+                if let spot = findPlacement(for: .white, in: currentBoard) {
+                    currentBoard.push(Piece(id: 9, bug: .mosquito, color: .white), at: spot)
+                } else if !unplaced.contains(where: { $0.bug == .mosquito && $0.color == .white }) {
+                    unplaced.append(Piece(id: 9, bug: .mosquito, color: .white))
+                }
+            }
+
+        case 8:
+            // Step 9: Win / Checkmate
+            // 1. Locate or guarantee Black Queen on the board, uncovered and clearly visible
+            var blackQueenHex: Hex
+            if let existingHex = currentBoard.location(of: 3) {
+                blackQueenHex = existingHex
+                // If anything was placed on top of the Queen (e.g. beetle), uncover it so Queen is visible
+                while currentBoard.height(blackQueenHex) > 1 {
+                    currentBoard.pop(at: blackQueenHex)
+                }
+            } else if let existingQueen = game.state.queenHex(.black) {
+                blackQueenHex = existingQueen
+                while currentBoard.height(blackQueenHex) > 1 {
+                    currentBoard.pop(at: blackQueenHex)
+                }
+            } else if let spot = findPlacement(for: .black, in: currentBoard) {
+                blackQueenHex = spot
+                currentBoard.push(Piece(id: 3, bug: .queen, color: .black), at: spot)
+            } else {
+                blackQueenHex = currentBoard.occupiedCells.first?.neighbors.first(where: { !currentBoard.isOccupied($0) }) ?? Hex(2, 0)
+                currentBoard.push(Piece(id: 3, bug: .queen, color: .black), at: blackQueenHex)
+            }
+
+            // 2. Ensure exactly 5 of the 6 neighbors of Black Queen are occupied, leaving 1 gap
+            let neighbors = blackQueenHex.neighbors
+            let emptyNeighbors = neighbors.filter { !currentBoard.isOccupied($0) }
+            if emptyNeighbors.count > 1 {
+                var dummyID = 20
+                for (i, emptyHex) in emptyNeighbors.dropFirst().enumerated() {
+                    currentBoard.push(Piece(id: dummyID + i, bug: .ant, color: .black), at: emptyHex)
+                }
+            }
+
+            // 3. Ensure the player has an active White piece (Grasshopper, Ant, or Beetle) ready to move into the 1 open gap
+            if let openGap = blackQueenHex.neighbors.first(where: { !currentBoard.isOccupied($0) }) {
+                let testState = GameState(board: currentBoard, current: .white, unplaced: unplaced, movesMade: [.white: 5, .black: 5])
+                let canReach = currentBoard.occupiedCells
+                    .filter { currentBoard.topPiece($0)?.color == .white }
+                    .flatMap { hex in currentBoard.topPiece(hex).map { MoveGenerator.destinations(for: $0.id, in: testState) } ?? [] }
+                    .contains(openGap)
+
+                if !canReach {
+                    for d in 0..<6 {
+                        let jumpOrigin = openGap.neighbor((d + 3) % 6).neighbor((d + 3) % 6)
+                        if !currentBoard.isOccupied(jumpOrigin) && currentBoard.touchesHive(jumpOrigin) {
+                            currentBoard.push(Piece(id: 7, bug: .grasshopper, color: .white), at: jumpOrigin)
+                            break
+                        }
+                    }
+                }
+            }
+
+        default:
+            break
+        }
+
+        let updatedState = GameState(
+            board: currentBoard,
+            current: .white,
+            unplaced: unplaced,
+            movesMade: game.state.movesMade,
+            lastMove: game.state.lastMove,
+            config: game.state.config
+        )
+
+        // SMART REMEDIATION RULE:
+        // SE apenas SE o usuário movimentou as peças de modo a bloquear ou impedir
+        // a peça que será explicada nesta etapa, ajustamos as posições para permitir
+        // a explicação e prática do movimento da criatura.
+        if case let .move(wantBug) = steps[idx].goal {
+            let canMove = hasLegalMoves(for: wantBug, in: updatedState)
+            if !canMove {
+                let remediated = remediationBoard(for: idx)
+                game.loadTutorialState(remediated, constraint: constraintForGoal(steps[idx].goal))
+                return
+            }
+        } else if case let .place(wantBug) = steps[idx].goal {
+            let canPlace = !MoveGenerator.placementCells(updatedState).isEmpty
+            if !canPlace {
+                let remediated = remediationBoard(for: idx)
+                game.loadTutorialState(remediated, constraint: constraintForGoal(steps[idx].goal))
+                return
+            }
+        } else if case .winMatch = steps[idx].goal {
+            let canWin = MoveGenerator.legalMoves(updatedState).contains { move in
+                updatedState.applying(move).result == GameResult.win(PlayerColor.white)
+            }
+            if !canWin {
+                let remediated = remediationBoard(for: idx)
+                game.loadTutorialState(remediated, constraint: constraintForGoal(steps[idx].goal))
+                return
+            }
+        }
+
+        game.loadTutorialState(updatedState, constraint: constraintForGoal(steps[idx].goal))
+    }
+
+    private func hasLegalMoves(for bug: Bug, in state: GameState) -> Bool {
+        let board = state.board
+        let friendlyPieces = board.occupiedCells.compactMap { board.topPiece($0) }.filter { $0.color == .white && $0.bug == bug }
+        for piece in friendlyPieces {
+            let dests = MoveGenerator.destinations(for: piece.id, in: state)
+            if !dests.isEmpty {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func remediationBoard(for idx: Int) -> GameState {
+        var b = Board()
+        let unplaced: [Piece] = [
+            Piece(id: 6, bug: .beetle, color: .white),
+            Piece(id: 7, bug: .grasshopper, color: .white),
+            Piece(id: 8, bug: .ladybug, color: .white),
+            Piece(id: 9, bug: .mosquito, color: .white)
+        ]
+
+        switch idx {
+        case 3:
+            // Step 4: Spider remediation - free spider on outer corner
+            b.push(Piece(id: 0, bug: .ant, color: .white), at: Hex(0, 0))
+            b.push(Piece(id: 1, bug: .ant, color: .black), at: Hex(1, 0))
+            b.push(Piece(id: 4, bug: .queen, color: .white), at: Hex(0, -1))
+            b.push(Piece(id: 3, bug: .queen, color: .black), at: Hex(1, 1))
+            b.push(Piece(id: 2, bug: .spider, color: .white), at: Hex(-1, 0))
+            return GameState(board: b, current: .white, unplaced: unplaced, movesMade: [.white: 3, .black: 3])
+
+        case 4:
+            // Step 5: Beetle remediation - beetle positioned to climb onto adjacent tile
+            b.push(Piece(id: 0, bug: .ant, color: .white), at: Hex(0, 0))
+            b.push(Piece(id: 1, bug: .ant, color: .black), at: Hex(1, 0))
+            b.push(Piece(id: 4, bug: .queen, color: .white), at: Hex(0, -1))
+            b.push(Piece(id: 3, bug: .queen, color: .black), at: Hex(1, 1))
+            b.push(Piece(id: 6, bug: .beetle, color: .white), at: Hex(-1, 0))
+            return GameState(board: b, current: .white, unplaced: unplaced, movesMade: [.white: 3, .black: 3])
+
+        case 5:
+            // Step 6: Grasshopper remediation - line of pieces to jump over
+            b.push(Piece(id: 0, bug: .ant, color: .white), at: Hex(0, 0))
+            b.push(Piece(id: 1, bug: .ant, color: .black), at: Hex(1, 0))
+            b.push(Piece(id: 4, bug: .queen, color: .white), at: Hex(0, -1))
+            b.push(Piece(id: 3, bug: .queen, color: .black), at: Hex(1, 1))
+            b.push(Piece(id: 7, bug: .grasshopper, color: .white), at: Hex(-1, 0))
+            return GameState(board: b, current: .white, unplaced: unplaced, movesMade: [.white: 3, .black: 3])
+
+        case 6:
+            // Step 7: Ladybug remediation - ladybug positioned to fly over hive
+            b.push(Piece(id: 0, bug: .ant, color: .white), at: Hex(0, 0))
+            b.push(Piece(id: 1, bug: .ant, color: .black), at: Hex(1, 0))
+            b.push(Piece(id: 4, bug: .queen, color: .white), at: Hex(0, -1))
+            b.push(Piece(id: 3, bug: .queen, color: .black), at: Hex(1, 1))
+            b.push(Piece(id: 8, bug: .ladybug, color: .white), at: Hex(-1, 0))
+            return GameState(board: b, current: .white, unplaced: unplaced, movesMade: [.white: 3, .black: 3])
+
+        case 7:
+            // Step 8: Mosquito remediation - mosquito touching ant to copy
+            b.push(Piece(id: 0, bug: .ant, color: .white), at: Hex(0, 0))
+            b.push(Piece(id: 1, bug: .ant, color: .black), at: Hex(1, 0))
+            b.push(Piece(id: 4, bug: .queen, color: .white), at: Hex(0, -1))
+            b.push(Piece(id: 3, bug: .queen, color: .black), at: Hex(1, 1))
+            b.push(Piece(id: 9, bug: .mosquito, color: .white), at: Hex(-1, 0))
+            return GameState(board: b, current: .white, unplaced: unplaced, movesMade: [.white: 3, .black: 3])
+
+        case 8:
+            // Step 9: Win remediation - Black queen surrounded on 5 sides, grasshopper jumps into 6th
+            b.push(Piece(id: 3, bug: .queen, color: .black), at: Hex(0, 0))
+            b.push(Piece(id: 0, bug: .ant, color: .white), at: Hex(0, 1))
+            b.push(Piece(id: 1, bug: .ant, color: .black), at: Hex(1, 0))
+            b.push(Piece(id: 4, bug: .queen, color: .white), at: Hex(1, -1))
+            b.push(Piece(id: 2, bug: .spider, color: .white), at: Hex(0, -1))
+            b.push(Piece(id: 6, bug: .beetle, color: .white), at: Hex(-1, 0))
+            b.push(Piece(id: 7, bug: .grasshopper, color: .white), at: Hex(-3, 2))
+            return GameState(board: b, current: .white, unplaced: [], movesMade: [.white: 6, .black: 6])
+
+        default:
+            return game.state
+        }
+    }
+
+    /// Strictly finds a legal placement cell touching the hive according to official Hive rules.
+    private func findPlacement(for color: PlayerColor, in board: Board) -> Hex? {
+        let tempState = GameState(
+            board: board,
+            current: color,
+            unplaced: [Piece(id: 999, bug: .ant, color: color)],
+            movesMade: [.white: 2, .black: 2]
+        )
+        let legalCells = MoveGenerator.placementCells(tempState)
+        if let first = legalCells.first { return first }
+
+        // Fallback: any empty neighbor of a friendly piece that strictly touches the hive
+        let friendlyCells = board.occupiedCells.filter { board.topPiece($0)?.color == color }
+        for cell in friendlyCells {
+            for neighbor in board.emptyNeighbors(cell) {
+                if board.touchesHive(neighbor) {
+                    return neighbor
+                }
+            }
+        }
+        for cell in board.occupiedCells {
+            for neighbor in board.emptyNeighbors(cell) {
+                if board.touchesHive(neighbor) {
+                    return neighbor
+                }
+            }
+        }
+        return nil
+    }
+
+    private func constraintForGoal(_ goal: TutorialStep.Goal) -> GameController.TutorialConstraint.Kind {
+        switch goal {
+        case .narrate: return .none
+        case let .place(bug): return .place(bug: bug)
+        case let .move(bug): return .move(bug: bug)
+        case .winMatch: return .winMatch
+        }
+    }
+
     private func advanceNarration() {
-        guard case .narrate = currentStep.action, stepIndex + 1 < steps.count else { return }
+        guard case .narrate = currentStep.goal, stepIndex + 1 < steps.count else { return }
         withAnimation(.easeInOut(duration: 0.3)) {
             loadStep(stepIndex + 1)
         }
@@ -466,23 +628,29 @@ struct TutorialView: View {
         if currentStep.isFinal {
             VStack(spacing: 10) {
                 bigButton("Iniciar Jornada da Colmeia", filled: true, action: onPlayGame)
-                bigButton("Voltar ao Início", filled: false, action: onExit)
+                if canSkip {
+                    bigButton("Voltar ao Início", filled: false, action: onExit)
+                }
             }
             .frame(maxWidth: 480)
-        } else if case .narrate = currentStep.action {
+        } else if case .narrate = currentStep.goal {
             VStack(spacing: 8) {
-                bigButton("Próximo", filled: true) { advanceNarration() }
-                Button("Pular Tutorial", action: onExit)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .padding(.top, 2)
+                bigButton(stepIndex == 2 ? "Entendi o Princípio, Continuar" : "Próximo", filled: true) { advanceNarration() }
+                if canSkip {
+                    Button("Pular Tutorial", action: onExit)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .padding(.top, 2)
+                }
             }
             .frame(maxWidth: 480)
         } else {
-            Button("Pular Tutorial", action: onExit)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.4))
-                .padding(.top, 2)
+            if canSkip {
+                Button("Pular Tutorial", action: onExit)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .padding(.top, 2)
+            }
         }
     }
 

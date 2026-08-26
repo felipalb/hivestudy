@@ -5,15 +5,14 @@ enum AppScreen {
     case home
     case game
     case onlineLobby
+    case tutorial
 }
 
 struct ContentView: View {
-    @State private var currentScreen: AppScreen = .home
+    @State private var currentScreen: AppScreen = OnboardingState.hasSeenTutorial ? .home : .tutorial
     @State private var game = GameController()
     @State private var showMenu = false
     @State private var showLeaveConfirm = false
-    @State private var showOnboarding = !OnboardingState.hasSeenTutorial
-    @State private var showTutorial = false
     /// The board piece the player is inspecting; non-nil
     /// while the movement-explanation modal is up.
     @State private var inspectedPiece: Piece?
@@ -35,7 +34,9 @@ struct ContentView: View {
                         }
                     },
                     onPlayTutorial: {
-                        showTutorial = true
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            currentScreen = .tutorial
+                        }
                     },
                     onOpenSettings: {
                         showMenu = true
@@ -53,6 +54,18 @@ struct ContentView: View {
                             game.startOnlineMatch(match, localColor: localColor)
                             withAnimation { currentScreen = .game }
                         }
+                    }
+                )
+                .transition(.opacity)
+            } else if currentScreen == .tutorial {
+                TutorialView(
+                    canSkip: OnboardingState.hasSeenTutorial,
+                    onExit: {
+                        withAnimation { currentScreen = .home }
+                    },
+                    onPlayGame: {
+                        game.startCampaign(level: CampaignLevel.allLevels[0])
+                        withAnimation { currentScreen = .game }
                     }
                 )
                 .transition(.opacity)
@@ -78,32 +91,6 @@ struct ContentView: View {
                 .zIndex(25)
             }
 
-            // First launch only: a short onboarding walkthrough, on top of
-            // everything else. Its "Play Tutorial" choice launches the guided
-            // tutorial overlay below.
-            if showOnboarding {
-                OnboardingOverlay(onFinish: { startTutorial in
-                    showOnboarding = false
-                    if startTutorial { showTutorial = true }
-                })
-                .transition(.opacity)
-                .zIndex(30)
-            }
-
-            // The interactive, fully-guided tutorial.
-            if showTutorial {
-                TutorialView(
-                    onExit: { showTutorial = false },
-                    onPlayGame: {
-                        showTutorial = false
-                        game.startCampaign(level: CampaignLevel.allLevels[0])
-                        withAnimation { currentScreen = .game }
-                    }
-                )
-                .transition(.opacity)
-                .zIndex(35)
-            }
-
             // 3D Color draw / coin-flip reveal overlay when a new match begins
             if let drawnColor = game.pendingColorDraw {
                 ColorDrawOverlay(
@@ -118,15 +105,18 @@ struct ContentView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: game.result)
         .animation(.easeInOut(duration: 0.25), value: game.pendingResume != nil)
         .animation(.easeInOut(duration: 0.2), value: showLeaveConfirm)
-        .animation(.easeInOut(duration: 0.25), value: showOnboarding)
-        .animation(.easeInOut(duration: 0.25), value: showTutorial)
         .animation(.easeInOut(duration: 0.2), value: inspectedPiece)
         .animation(.easeInOut(duration: 0.25), value: game.pendingColorDraw != nil)
         .animation(.easeInOut(duration: 0.2), value: game.isPieceSelected)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: game.toast)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showMenu) {
-            GameMenuSheet(game: game, onStartTutorial: { showTutorial = true })
+            GameMenuSheet(game: game, onStartTutorial: {
+                showMenu = false
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    currentScreen = .tutorial
+                }
+            })
         }
         // Cache the match whenever the app leaves the foreground, so nothing is
         // lost even if it's killed in the background.
@@ -199,10 +189,12 @@ struct ContentView: View {
                         }
                     },
                     onGoHome: {
+                        OnboardingState.hasSeenTutorial = true
                         game.leaveMatch()
                         withAnimation { currentScreen = .home }
                     },
                     onNextCampaignLevel: { nextLevel in
+                        OnboardingState.hasSeenTutorial = true
                         game.startCampaign(level: nextLevel)
                     }
                 )
@@ -219,6 +211,7 @@ struct ContentView: View {
                         }
                         game.leaveMatch()
                         showLeaveConfirm = false
+                        OnboardingState.hasSeenTutorial = true
                         withAnimation { currentScreen = .home }
                     },
                     onContinue: { showLeaveConfirm = false }

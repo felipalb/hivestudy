@@ -96,8 +96,8 @@ struct OnboardingOverlay: View {
 
     private var oneHivePage: some View {
         pageBody(icon: "link",
-                 title: "Formação Unificada",
-                 text: "O campo deve permanecer conectado o tempo todo. Uma peça que dividiria a formação ao ser levantada não pode se mover. As peças deslizam — não podem passar por uma abertura bloqueada dos dois lados.")
+                 title: "Colmeia Unida (Sustentação)",
+                 text: "A colmeia funciona como uma corrente contínua — nunca pode se partir em dois grupos. Qualquer peça que esteja sustentando a ligação da colmeia fica travada e não pode sair. Além disso, as peças deslizam e não passam por portões bloqueados.")
     }
 
     private var tilesPage: some View {

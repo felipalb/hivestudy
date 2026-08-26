@@ -226,94 +226,148 @@ private struct SeededRNG: RandomNumberGenerator {
 // MARK: - Tutorial finish-drill geometry (guards the app's scripted win board)
 
 @Suite struct TutorialScenarioTests {
-    /// The guided tutorial's final drill hands White a Grasshopper that jumps
-    /// into the last open side of Black's Queen to win. The app rebuilds this
-    /// exact board; this test guards the hand-computed coordinates.
-    @Test func grasshopperJumpCompletesTheSurround() {
-        let b = board([
-            (Hex(0, 0), .queen, .black),        // id 0 — Black Queen, 5 sides filled
-            (Hex(1, 0), .ant, .black),          // id 1  (E)
-            (Hex(1, -1), .beetle, .white),      // id 2  (NE)
-            (Hex(0, -1), .spider, .black),      // id 3  (NW)
-            (Hex(-1, 1), .ant, .white),         // id 4  (SW)
-            (Hex(0, 1), .grasshopper, .black),  // id 5  (SE)
-            (Hex(1, 1), .queen, .white),        // id 6  — White Queen (so White may move)
-            (Hex(2, 0), .grasshopper, .white)   // id 7  — the winning mover
+    /// The continuous tutorial's final move: White Grasshopper at (0,2) jumps over (1,1) and Black Queen at (2,0)
+    /// to land on (3,-1), completing the 6th side and winning the match!
+    @Test func continuousTutorialCompletesTheSurround() {
+        var b = board([
+            (Hex(2, -1), .ant, .white),        // 0
+            (Hex(1, 0), .ant, .black),         // 1
+            (Hex(2, -2), .spider, .white),     // 2
+            (Hex(2, 0), .queen, .black),       // 3
+            (Hex(-1, 1), .queen, .white),      // 4
+            (Hex(0, 1), .grasshopper, .black), // 5 (black piece at 0,1 connecting White Queen)
+            (Hex(1, 1), .beetle, .black),      // 6 (black beetle at 1,1)
+            (Hex(0, 2), .grasshopper, .white), // 7 (white grasshopper to jump)
+            (Hex(3, 0), .ladybug, .white),     // 8
+            (Hex(2, 1), .mosquito, .white)     // 9
         ])
+        b.push(Piece(id: 10, bug: .beetle, color: .white), at: Hex(1, 0))
+
         let state = GameState(board: b, current: .white,
-                              unplaced: [], movesMade: [.white: 5, .black: 5])
+                              unplaced: [], movesMade: [.white: 7, .black: 3],
+                              config: GameConfig(tournamentOpening: false, expansions: [.mosquito, .ladybug]))
         #expect(state.result == .ongoing)
-        #expect(state.queenSurroundCount(.black) == 5)         // gap at (-1,0)
+        #expect(state.queenSurroundCount(.black) == 5)         // gap at (3,-1)
 
+        // White Grasshopper at (0,2) (id 7) jumps NE over (1,1) and (2,0) into (3,-1)
         let dests = MoveGenerator.destinations(for: 7, in: state)
-        #expect(dests.contains(Hex(-1, 0)))                    // the winning jump
+        #expect(dests.contains(Hex(3, -1)))                    // the winning jump
 
-        let after = state.applying(.move(pieceID: 7, from: Hex(2, 0), to: Hex(-1, 0)))
+        let after = state.applying(.move(pieceID: 7, from: Hex(0, 2), to: Hex(3, -1)))
         #expect(after.result == .win(.white))
     }
 
-    // MARK: - Per-Bug Drill Geometry
-
-    /// Spider drill: White Spider (id 3) at (-2,1) should have legal 3-step
-    /// slide destinations.
-    @Test func spiderDrillHasValidTargets() {
+    /// Step 3 One-Hive Test: The piece in the center is an articulation point (cut vertex),
+    /// so it cannot move, and MoveGenerator diagnoses it as .oneHiveCutVertex.
+    @Test func step3CenterAntIsCutVertex() {
         let b = board([
-            (Hex(0, 0), .queen, .white),    // id 0
-            (Hex(1, 0), .queen, .black),    // id 1
-            (Hex(0, 1), .ant, .black),      // id 2
-            (Hex(-2, 1), .spider, .white),  // id 3 — spider to move
-            (Hex(-1, 0), .ant, .white),     // id 4
+            (Hex(0, 0), .ant, .white),
+            (Hex(1, 0), .ant, .black),
+            (Hex(-1, 0), .spider, .white),
+            (Hex(2, 0), .queen, .black),
+            (Hex(-1, 1), .queen, .white)
         ])
         let state = GameState(board: b, current: .white,
                               unplaced: [], movesMade: [.white: 3, .black: 2])
-        let dests = MoveGenerator.destinations(for: 3, in: state)
-        #expect(!dests.isEmpty, "Spider drill: spider at (-2,1) should have at least one 3-step destination")
+
+        // Piece 0 at (0,0) is bridging the White pieces with Black pieces
+        #expect(state.board.isCutVertex(Hex(0, 0)))
+        let reason = MoveGenerator.immobilityReason(for: 0, in: state)
+        #expect(reason == .oneHiveCutVertex)
     }
 
-    /// Beetle drill: White Beetle (id 2) at (-1,0) should be able to climb
-    /// onto the adjacent Black Ant at (0,0).
-    @Test func beetleDrillCanClimb() {
+    // MARK: - Continuous Match Per-Step Geometries
+
+    /// Spider step: White Spider at (-1,0) slides 3 steps to (2,-2).
+    @Test func spiderContinuousStepHasValidTargets() {
         let b = board([
-            (Hex(0, -1), .queen, .white),   // id 0
-            (Hex(1, -1), .queen, .black),   // id 1
-            (Hex(-1, 0), .beetle, .white),  // id 2 — beetle to move
-            (Hex(0, 0), .ant, .black),      // id 3 — piece to climb onto
+            (Hex(2, -1), .ant, .white),
+            (Hex(1, 0), .ant, .black),
+            (Hex(-1, 0), .spider, .white),
+            (Hex(2, 0), .queen, .black),
+            (Hex(-1, 1), .queen, .white),
+            (Hex(0, 1), .grasshopper, .black)
         ])
         let state = GameState(board: b, current: .white,
-                              unplaced: [], movesMade: [.white: 2, .black: 2])
+                              unplaced: [], movesMade: [.white: 3, .black: 3])
         let dests = MoveGenerator.destinations(for: 2, in: state)
-        #expect(dests.contains(Hex(0, 0)), "Beetle drill: beetle at (-1,0) should be able to climb onto (0,0)")
+        #expect(dests.contains(Hex(2, -2)), "Spider should be able to reach (2,-2) in exactly 3 steps")
     }
 
-    /// Ladybug drill: White Ladybug (id 4) at (-2,1) should have
-    /// up-over-down destinations through the hive.
-    @Test func ladybugDrillHasValidTargets() {
+    /// Beetle step: White Beetle at (1,-1) can climb onto (1,0).
+    @Test func beetleContinuousStepCanClimb() {
         let b = board([
-            (Hex(0, 0), .queen, .white),     // id 0
-            (Hex(1, 0), .queen, .black),     // id 1
-            (Hex(-1, 0), .ant, .white),      // id 2
-            (Hex(0, 1), .beetle, .black),    // id 3
-            (Hex(-2, 1), .ladybug, .white),  // id 4 — ladybug to move
+            (Hex(2, -1), .ant, .white),
+            (Hex(1, 0), .ant, .black),
+            (Hex(2, -2), .spider, .white),
+            (Hex(2, 0), .queen, .black),
+            (Hex(-1, 1), .queen, .white),
+            (Hex(0, 1), .grasshopper, .black),
+            (Hex(1, -1), .beetle, .white)
         ])
         let state = GameState(board: b, current: .white,
-                              unplaced: [], movesMade: [.white: 3, .black: 2])
-        let dests = MoveGenerator.destinations(for: 4, in: state)
-        #expect(!dests.isEmpty, "Ladybug drill: ladybug at (-2,1) should have at least one up-over-down destination")
+                              unplaced: [], movesMade: [.white: 4, .black: 3])
+        let dests = MoveGenerator.destinations(for: 6, in: state)
+        #expect(dests.contains(Hex(1, 0)), "Beetle at (1,-1) should be able to climb onto Black Ant at (1,0)")
     }
 
-    /// Mosquito drill: White Mosquito (id 3) at (-1,1) touches a White Ant,
-    /// so it should be able to slide like an ant.
-    @Test func mosquitoDrillCanCopyAnt() {
-        let b = board([
-            (Hex(0, 0), .queen, .white),       // id 0
-            (Hex(1, 0), .queen, .black),       // id 1
-            (Hex(0, 1), .ant, .white),         // id 2
-            (Hex(-1, 1), .mosquito, .white),   // id 3 — mosquito to move
+    /// Grasshopper step: White Grasshopper at (-2,1) jumps over (-1,1) and (0,1) to (1,1).
+    @Test func grasshopperContinuousStepCanJump() {
+        var b = board([
+            (Hex(2, -1), .ant, .white),        // 0
+            (Hex(1, 0), .ant, .black),         // 1
+            (Hex(2, -2), .spider, .white),     // 2
+            (Hex(2, 0), .queen, .black),       // 3
+            (Hex(-1, 1), .queen, .white),      // 4
+            (Hex(0, 1), .grasshopper, .black), // 5
+            (Hex(-2, 1), .grasshopper, .white) // 6
         ])
+        b.push(Piece(id: 7, bug: .beetle, color: .white), at: Hex(1, 0))
         let state = GameState(board: b, current: .white,
-                              unplaced: [], movesMade: [.white: 3, .black: 1])
-        let dests = MoveGenerator.destinations(for: 3, in: state)
-        #expect(!dests.isEmpty, "Mosquito drill: mosquito at (-1,1) should copy ant and have slide destinations")
+                              unplaced: [], movesMade: [.white: 4, .black: 3])
+        let dests = MoveGenerator.destinations(for: 6, in: state)
+        #expect(dests.contains(Hex(1, 1)), "Grasshopper at (-2,1) should jump line to land on (1,1)")
+    }
+
+    /// Ladybug step: White Ladybug at (1,-1) flies over hive and lands at (3,0).
+    @Test func ladybugContinuousStepHasValidTargets() {
+        var b = board([
+            (Hex(2, -1), .ant, .white),        // 0
+            (Hex(1, 0), .ant, .black),         // 1
+            (Hex(2, -2), .spider, .white),     // 2
+            (Hex(2, 0), .queen, .black),       // 3
+            (Hex(-1, 1), .queen, .white),      // 4
+            (Hex(0, 1), .grasshopper, .black), // 5
+            (Hex(1, 1), .grasshopper, .white), // 6
+            (Hex(1, -1), .ladybug, .white)     // 7
+        ])
+        b.push(Piece(id: 8, bug: .beetle, color: .white), at: Hex(1, 0))
+        let state = GameState(board: b, current: .white,
+                              unplaced: [], movesMade: [.white: 5, .black: 3],
+                              config: GameConfig(tournamentOpening: false, expansions: [.ladybug]))
+        let dests = MoveGenerator.destinations(for: 7, in: state)
+        #expect(dests.contains(Hex(3, 0)), "Ladybug at (1,-1) should be able to land at (3,0)")
+    }
+
+    /// Mosquito step: White Mosquito at (3,-2) touches Ant at (2,-1) and copies Ant to reach (2,1).
+    @Test func mosquitoContinuousStepCanCopyAnt() {
+        var b = board([
+            (Hex(2, -1), .ant, .white),        // 0
+            (Hex(1, 0), .ant, .black),         // 1
+            (Hex(2, -2), .spider, .white),     // 2
+            (Hex(2, 0), .queen, .black),       // 3
+            (Hex(-1, 1), .queen, .white),      // 4
+            (Hex(0, 1), .grasshopper, .black), // 5
+            (Hex(1, 1), .grasshopper, .white), // 6
+            (Hex(3, 0), .ladybug, .white),     // 7
+            (Hex(3, -2), .mosquito, .white)    // 8
+        ])
+        b.push(Piece(id: 9, bug: .beetle, color: .white), at: Hex(1, 0))
+        let state = GameState(board: b, current: .white,
+                              unplaced: [], movesMade: [.white: 6, .black: 3],
+                              config: GameConfig(tournamentOpening: false, expansions: [.mosquito, .ladybug]))
+        let dests = MoveGenerator.destinations(for: 8, in: state)
+        #expect(dests.contains(Hex(2, 1)), "Mosquito at (3,-2) should copy Ant and reach (2,1)")
     }
 }
 
